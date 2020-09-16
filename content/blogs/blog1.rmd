@@ -7,15 +7,14 @@ description: ""
 draft: false
 output: 
   flexdashboard::flex_dashboard:
-    source_code: "https://github.com/SabaTavoosi/Suicide-data---Interactive-dashboard"
     vertical_layout: scroll
     theme: yeti
 image: pic10.jpg
 # author: "Advait Jayant"
 # date: "September 16, 2020"
 keywords: ""
-slug: zillow-project
-title: zillow-project
+slug: ipsum
+title: ipsum
 ---
 
 ``` {js}
