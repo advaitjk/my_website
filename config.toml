@@ -93,8 +93,8 @@ disqusShortname = ""
     
     
     [[params.tiles.showcase]]
-      title = "Trump's Approval Rating"
-      subtitle = "It izzz what it izzzz"
+      title = "Airbnb Munich Price Prediction"
+      subtitle = "Saving some money on vacation"
       image = "pic05.jpg"
       url = "blogs/blog1"
 
