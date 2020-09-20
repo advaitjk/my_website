@@ -162,7 +162,7 @@ disqusShortname = ""
     # - click the confirm link in the email from www.formspree.io
     # - you're done. Happy mailing!
     # formEmail = "example@domain.com"
-
+    formEmail = "ajayant.mam2021@london.edu"
     # Contact Section
     # You can add multiple emails, phone numbers, or addresses
     # by copying the corresponding map with frontmatter code.
