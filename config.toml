@@ -67,9 +67,9 @@ disqusShortname = ""
     #    url = "UrlOfLink"
 
     # Button Style 1
-    [[params.navigation.button1]]
-      name = "Get Started"
-      url = "blogs"
+ #   [[params.navigation.button1]]
+#      name = "Get Started"
+ #     url = "blogs"
 
 #    # Button Style 2
 #   [[params.navigation.button2]]
@@ -82,7 +82,7 @@ disqusShortname = ""
     # To change the background image on the homepage banner, replace 'banner.jpg' in
     # the 'static/img' folder.
     title = "Welcome to Advait Jayant's Portfolio"
-    subtitle = "THIS WEBSITE IS DESIGNED WITH THE OBJECTIVE OF ALLOWING A VISITOR TO EXPERIENCE THE WORK OF ADVAIT JAYANT FIRST-HAND"
+    subtitle = "THIS WEBSITE IS DESIGNED WITH THE OBJECTIVE OF ALLOWING A VISITOR TO EXPERIENCE THE WORK OF ADVAIT JAYANT FIRST-HAND.\n Special thanks to Professor Kostis for motivating me to build this website. Thank you Marco Laube and Alessandro Angeletti, and Deniz Ozdemir for helping me! "
     buttonText = "Let's begin our journey! :)"
 
 
@@ -136,12 +136,12 @@ disqusShortname = ""
     # To add more blogs just copy and paste the code.
 
   # Section Type Two
-  [params.two]
-    enable = true
-    title = "Massa libero"
-    subtitle = "subtitle"
-    buttonText = "Get Started"
-    url = "blogs"
+#  [params.two]
+#    enable = true
+#    title = "Massa libero"
+#    subtitle = "subtitle"
+ #   buttonText = "Get Started"
+ #   url = "blogs"
 
 
   # Contact section
@@ -183,7 +183,7 @@ disqusShortname = ""
   # Footer section
   [params.footer]
     enable = true
-    copyright = "LEOCRAFT MARKETING PRIVATE LIMITED"
+    copyright = "©LEOCRAFT MARKETING PRIVATE LIMITED"
 
     # Uses font awesome icons
     [[params.footer.social]]
