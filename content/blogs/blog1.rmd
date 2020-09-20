@@ -27,13 +27,22 @@ knitr::opts_chunk$set(
 ```
 
 1. Executive Summary
-  A. Background Information
-  B. Data Cleaning
-  C. Exploratory Data Analysis
-  D. Regression
-  E. Diagnosis and Prediction
+
+1. Background Information
+  
+1. Data Cleaning
+  
+1. Exploratory Data Analysis
+  
+1. Regression
+  
+1. Diagnosis and Prediction
+  
 
 # Background Information 
+
+<center><img src="https://www.esquireme.com/public/images/2019/11/03/airbnb-678x381.jpg"></center>
+
 
 Let's start this analysis with a bit of background information. As students of the world interested in traveling, we have heard about the Oktoberfest festival which takes place yearly in Munich. For this event, we are looking for accommodation and all of our friends have recommended us Airbnb. Airbnb, the world leader in hotel/hosting in the famous "sharing economy", allows us to rent accommodation directly from individuals in thousands of cities around the world, at dramatically reduced prices in comparison to hotels. 
 

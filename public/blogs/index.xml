@@ -17,16 +17,22 @@
       <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
       
       <guid>/blogs/blog5/</guid>
-      <description>Executive Summary  Introduction The Ames Housing dataset was compiled by Dean De Cock for use in data science education. It’s an incredible alternative for data scientists looking for a modernized and expanded version of the often cited Boston Housing dataset. Let’s say that we are looking to buy a house in Ames, Iowa, and we want to find the best possible house for our price range, so we are going to use different supervised machine learning techniques to actually find how much this property will set us back!</description>
+      <description>Executive Summary A. Background Information B. Data Cleaning C. Exploratory Data Analysis D. Regression E. Diagnosis and Prediction  Background Information Let’s start this analysis with a bit of background information. As students of the world interested in traveling, we have heard about the Oktoberfest festival which takes place yearly in Munich. For this event, we are looking for accommodation and all of our friends have recommended us Airbnb.</description>
     </item>
     
     <item>
-      <title>House Price Prediction</title>
-      <link>/blogs/blog5/</link>
+      <title>Munich Airbnb Price Prediction</title>
+      <link>/blogs/blog1/</link>
       <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
       
-      <guid>/blogs/blog5/</guid>
-      <description>Executive Summary A. Background Information B. Data Cleaning C. Exploratory Data Analysis D. Regression E. Diagnosis and Prediction  Background Information Let’s start this analysis with a bit of background information. As students of the world interested in traveling, we have heard about the Oktoberfest festival which takes place yearly in Munich. For this event, we are looking for accommodation and all of our friends have recommended us Airbnb.</description>
+      <guid>/blogs/blog1/</guid>
+      <description>Executive Summary
+ Background Information
+ Data Cleaning
+ Exploratory Data Analysis
+ Regression
+ Diagnosis and Prediction
+  Background Information   Let’s start this analysis with a bit of background information. As students of the world interested in traveling, we have heard about the Oktoberfest festival which takes place yearly in Munich. For this event, we are looking for accommodation and all of our friends have recommended us Airbnb.</description>
     </item>
     
     <item>

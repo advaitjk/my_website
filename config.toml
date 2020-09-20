@@ -106,14 +106,14 @@ disqusShortname = ""
       url = "blogs/blog2"
 
     [[params.tiles.showcase]]
-      title = "Understanding what makes up the GDP "
+      title = "Understanding what makes up the GDP"
       subtitle = "How is the GDP Calculated?"
       image = "pic03.jpg"
       url = "blogs/blog3"
 
     [[params.tiles.showcase]]
       title = "Netflix and Chill"
-      subtitle = "A look at the IMDB 500 Dataset"
+      subtitle = "A look at the IMDB 5000 Dataset"
       image = "pic04.jpg"
       url = "blogs/blog4"
       
