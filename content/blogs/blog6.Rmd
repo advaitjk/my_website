@@ -1,0 +1,1334 @@
+---
+categories:
+- ""
+- ""
+date: "2017-10-31T22:26:13-05:00"
+description: 
+draft: false
+image: pic05.jpg
+keywords: "IMDB Dataset"
+slug: blog1
+title: Munich Airbnb Price Prediction
+---
+
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+1. Executive Summary
+
+1. Background Information
+  
+1. Data Cleaning
+  
+1. Exploratory Data Analysis
+  
+1. Regression
+  
+1. Diagnosis and Prediction
+  
+
+# Background Information 
+
+<center><img src="https://www.esquireme.com/public/images/2019/11/03/airbnb-678x381.jpg"></center>
+
+
+Let's start this analysis with a bit of background information. As students of the world interested in traveling, we have heard about the Oktoberfest festival which takes place yearly in Munich. For this event, we are looking for accommodation and all of our friends have recommended us Airbnb. Airbnb, the world leader in hotel/hosting in the famous "sharing economy", allows us to rent accommodation directly from individuals in thousands of cities around the world, at dramatically reduced prices in comparison to hotels. 
+
+So let's imagine that we are going on holiday to Munich; but before we actually get there, we want to make sure that we have the best home for holidaying with our partners. After all, we want to make sure that we impress our partners right? We are going to go there for 4 days and 4 nights, and since it's going to be a romantic vacation, we hope that there are only two people. In order to be able to find the best properties and predict their prices, we are going to begin by loading our dataset. 
+
+# Data Cleaning
+
+``` {r, include = FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(here)
+library(skimr)
+library(janitor)
+library(httr)
+library(readxl)
+library(vroom)
+library(infer)
+library(ggplot2)
+library(dplyr)
+library(cowplot)
+library(highcharter)
+require(tidy)
+library(leaflet)
+library(plotly)
+library(DT)
+library(shiny)
+library(GGally)
+library(Metrics)
+library(glue)
+library(kableExtra)
+library(ggridges)
+library(corrplot)
+library(broom)
+library(ggfortify)
+```
+
+``` {r}
+# Loading the listings dataframe for Munich
+listings <- vroom("http://data.insideairbnb.com/germany/bv/munich/2020-06-20/data/listings.csv.gz") %>% 
+    clean_names()
+```
+
+``` {r}
+# Skimming the listings
+skim(listings)
+```
+
+From a simple skim of our listings attribute, we can clearly see that there are 11172 rows, or observations, in our dataset. There are 106 columns to begin with, which means that we are dealing with 106 attributes. These are waaaaayyyy too many attributes for our analysis so we will need to make sure that our entire dataset is super clean before we begin solving our regression problem. 
+
+``` {r}
+# Creating a beautiful table to show the count of character, date, logical, and numeric variables. 
+table(sapply(listings, class))
+```
+
+In our table, we can clearly see that there are 45 character variables, 5 Date variables, 16 logical variables, and 40 numeric variables. 
+
+There are some variables that are currently characters but should definitely be factor variables, there are host_response_time, host_is_superhost, host_identity_verified, neighbourhood_cleansed, is_location_exact, property_type, room_type, bed_type, calendar_updated, instant_bookable, and cancellation_policy.
+
+``` {r}
+# Taking a look at the head of the listings dataframe
+head(listings)
+```
+107 columns are far too many to work with. So, now let's take a look at the summary statistics of the price attribute in the listings dataframe. 
+
+``` {r}
+# Using favstats to display our favourite statistics 
+favstats(listings$price)
+```
+
+We can see that the minimum price is 0 (not optimal), median price is 82, mean price is 113.17, and there are 28 observations that are missing the price attribute. We will need to clean the price attribute in the process of our analysis. 
+
+``` {r}
+# Checking for dimensions 
+dim(listings)
+```
+
+In our dataset the column price is non numeric and we have $ symbol appended to all prices. So we have to remove the symbol and change the datatype for visualization. 
+
+``` {r}
+### Cleaning up the price attribute
+typeof(listings$price)
+listings$price <- sub("\\$","",listings$price)
+listings$price <- as.numeric(listings$price)
+typeof(listings$price)
+
+### Cleaning up the extra people attribute
+listings$extra_people <- sub("\\$","",listings$extra_people)
+listings$extra_people <- as.numeric(listings$extra_people)
+
+### Cleaning up the cleaning_fee attribute
+listings$cleaning_fee <- sub("\\$","",listings$cleaning_fee)
+listings$cleaning_fee <- as.numeric(listings$cleaning_fee)
+typeof(listings$cleaning_fee)
+```
+
+Let us now visualize the missing data in our dataset. 
+
+``` {r fig.width = 10, fig.height = 10}
+# The theme that we are going to be using for this is a theme from fivethirtyeight
+th <- theme_fivethirtyeight() + theme(axis.title = element_text(), axis.title.x = element_text()) 
+
+# Visualising the missing dataset
+# First we find all of the listings where there are misisng vlaues 
+missing_airbnb <- listings %>% 
+                    summarise_all(~(sum(is.na(.))/n()))
+
+# Then next step is to gather by percent_missing 
+missing_airbnb <- gather(missing_airbnb, key = "variables", value = "percent_missing")
+# Now we will make sure that the minimum percent missing is greater than 0 for our visualisation. 
+missing_airbnb <- missing_airbnb[missing_airbnb$percent_missing > 0.0, ] 
+
+# We will plot a bar chart now to visualise all of the missing data that is now contained in the missing_airbnb dataframes
+ggplot(missing_airbnb, aes(x = reorder(variables, percent_missing), y = percent_missing)) +
+geom_bar(stat = "identity", fill = "navy", aes(color = I('white')), size = 0.3)+
+xlab('variables')+
+coord_flip() + 
+th +
+  ggtitle("Missing Data") +
+  xlab("Column name") +
+  ylab("Percentage missing") +
+  annotate("text", x = 1.5, y = 0.1,label = "(Minimum values have less than 0.001 percentage missing)", color = "slateblue", size = 4, hjust = -0.2, vjust=-2)
+  #theme(plot.title = element_text(family = "Helvetica", face = "bold", size = (15)),
+        #axis.title = element_text(family = "Helvetica", size = (10)),
+        #axis.text = element_text(family = "Helvetica", size = (10)))
+```
+
+The variables xl_picture_url, thumbnail_url, neighbourhood_group_cleansed, medium_url, license, jurisdiction_names, square_feet, monthly_price, weekly_price, and notes have too many missing values (> 70% missing values). These variables won't prove to be particularly helpful in our analysis. 
+
+The cleaning fee attribute contains several missing values: this basically means that there is no cleaning fee for these properties. 
+
+``` {r}
+# Changing all the NAs in missing value to 0s
+listings <- listings %>%
+  mutate(cleaning_fee = case_when(
+    is.na(cleaning_fee) ~ 0, 
+    TRUE ~ cleaning_fee
+  ))
+```
+
+Let us take a look at the property_type attribute. We want to check which properties are frequented most in our analysis.
+
+``` {r}
+# Checking the number of properties in each property type
+listings %>% 
+  count(property_type) %>% 
+  arrange(desc(n))
+
+```
+
+We can see that the most common property types are Apartments, Houses, Condominiums, and service apartments. There are a total of 31 kinds of properties out of which only the first 4 account for a major chunk of them. So, we will select Apartments, Houses, Condominiums, and Serviced Apartments, and then group all the other property types into a single one "Other". We will store this new grouping of properties in our prop_type_simplified attribute. 
+
+Most common property types
+``` {r}
+# Create a new variable prop_type_simplified containing Apartments, Houses, Condominiums, Serviced Apartments, and Others
+listings <- listings %>%
+  mutate(prop_type_simplified = case_when(
+    property_type %in% c("Apartment","House", "Condominium","Serviced apartment") ~ property_type, 
+    TRUE ~ "Other"
+  ))
+
+```
+
+Now, let's check if we did this correctly. 
+
+``` {r}
+# Checking for correct implementation
+listings %>%
+  count(property_type, prop_type_simplified) %>%
+  arrange(desc(n))        
+```
+
+We can see that everything is perfect. Now let's look at the minimum nights attribute. 
+
+``` {r}
+# Counting the different unique minimum nights in our dataset
+listings %>% 
+  count(minimum_nights) %>% 
+  arrange(desc(n))
+```
+
+The most common value in minimum nights is 1. Among, the most frequent minimum_nights, the most uncanny occurence is 30 minimum nights. We believe that this number probably corresponds to the fact that some properties are only available to rent per month. However, since we are only going for 4 nights, we will filter out those properties that minimum nights <= 4.
+
+``` {r}
+# Filtering for minimum nights <= 4 since our vacation is only 4 days. 
+listings <- listings %>% 
+  filter(minimum_nights <= 4)
+dim(listings)
+```
+
+There are a few columns that only contain null values in our dataset. Our next step is cleaning all of those columns from the dataset. 
+
+``` {r}
+# Removing all of the null columns in our dataframe
+listings_cleaned <- listings
+a<- sapply(listings_cleaned, function(y) sum(length(which(is.na(y)))))
+listings_cleaned <- listings[,colSums(is.na(listings)) < nrow(listings)]
+length(listings_cleaned)
+```
+
+Now that we cleaned all of the Null columns from the dataset, the next step is removing all of the URLs since we won't be needing them. 
+
+``` {r}
+# Removing all of the URL columns in the dataframes
+listings_cleaned[,names(listings_cleaned)[grep("url",names(listings_cleaned))]] <- NULL
+length(listings_cleaned)
+```
+
+The host_response_time column still has some NA values that have been listed as N/A and we need to make sure they are formatted into the correct value The host acceptance rate is also in a string but we need to make sure that this is stored in numbers. 
+
+``` {r}
+# Making sure that the Host Acceptance Rate is a number 
+listings_cleaned$host_acceptance_rate <- listings_cleaned$host_acceptance_rate %>% 
+                      parse_number()
+```
+
+Deleting columns which have more than 70% null values:
+Though we have deleted columns which have all null values, we still have columns which have more then 70% of the null data in it. As these nulls will affect our analysis we have two options to overcome with these.
+
+i. We can replace all nulls with the median, mean or mode if those columns are necessary.
+
+ii. We can simply delete these columns if they are not necessary.
+
+In our dataset exploration, these columns will not affect the analysis. So here we are choosing the second option to delete these columns.
+
+
+``` {r}
+# Deleting all of the columns that have more than 70% NULL values
+total <- nrow(listings_cleaned)
+b <-  round(total * 0.7)
+listings_cleaned <- listings_cleaned[,colSums(is.na(listings_cleaned)) < b]
+length(listings_cleaned)
+```
+
+Redundant Columns 
+There might be columns which will provide same information. As this leads to data redundancy we have to delete these columns.
+
+``` {r}
+# Removing all of the redundant columns
+listings_cleaned[,names(listings_cleaned[(duplicated(t(listings_cleaned)))])] <- NULL
+```
+
+Converting few columns to factor: 
+Using as.factor(), we will convert a few attributes into factors for faster access. 
+
+``` {r}
+# Changing all of the listed variables into factors
+listings_cleaned$host_response_time <- as.factor(listings_cleaned$host_response_time)
+listings_cleaned$host_is_superhost <- as.factor(listings_cleaned$host_is_superhost)
+listings_cleaned$host_identity_verified <- as.factor(listings_cleaned$host_identity_verified)
+listings_cleaned$neighbourhood_cleansed <- as.factor(listings_cleaned$neighbourhood_cleansed)
+listings_cleaned$is_location_exact <- as.factor(listings_cleaned$is_location_exact)
+listings_cleaned$property_type <- as.factor(listings_cleaned$property_type)
+listings_cleaned$room_type <- as.factor(listings_cleaned$room_type)
+listings_cleaned$bed_type <- as.factor(listings_cleaned$bed_type)
+listings_cleaned$calendar_updated <- as.factor(listings_cleaned$calendar_updated)
+listings_cleaned$instant_bookable <- as.factor(listings_cleaned$instant_bookable)
+listings_cleaned$cancellation_policy<- as.factor(listings_cleaned$cancellation_policy)
+```
+
+We will drop the columns scrape_id, state, country_code, and country from our listings dataframe because all of the observations in our dataset should have the same value for all of these attributes. 
+
+``` {r}
+# Checking for the unique "scrape_id"s
+unique(listings["scrape_id"])
+# Checking for the unique states
+unique(listings["state"])
+# Checking for the unique country codes 
+unique(listings["country_code"])
+# Checking for unique country codes
+unique(listings["country"])
+```
+
+We can clearly see that these attributes only contain 1 value for all the attributions (except for the state column). The state column seems to contain meaningless values so we will not be inputting this into our final listings dataset. 
+
+At this point, we still have far too many attributes so we are just going to select the attributes that we want to keep and store them in the final_listings dataframe. 
+
+``` {r}
+# Selecting all of the necessary attributes
+final_listings <- listings_cleaned[, c("price", 
+                                       "cleaning_fee", 
+                                       "extra_people", 
+                                       "property_type", 
+                                       "number_of_reviews", 
+                                       "review_scores_rating",
+                                       "host_response_time", 
+                                       "longitude", "latitude", 
+                                       "neighbourhood", 
+                                       "neighbourhood_cleansed", 
+                                       "host_is_superhost", 
+                                       "host_acceptance_rate", 
+                                       "minimum_nights", 
+                                       "prop_type_simplified", 
+                                       "room_type", 
+                                       "guests_included", 
+                                       "has_availability", 
+                                       "last_review", 
+                                       "availability_365", 
+                                       "amenities", 
+                                       "is_location_exact", 
+                                       "bathrooms", 
+                                       "bedrooms", 
+                                       "cancellation_policy", 
+                                       "accommodates", 
+                                       "instant_bookable", 
+                                       "availability_90", 
+                                       "availability_30")]
+
+# Making sure that all of the NAs are detected in the host_response_time and reviews_scores_rating attributes
+final_listings$host_response_time <- final_listings$host_response_time %>% 
+                      na_if("N/A")
+final_listings$host_response_time <- final_listings$host_response_time %>% 
+                      is.na()
+
+final_listings$review_scores_rating <- final_listings$review_scores_rating %>% 
+                      na_if("N/A")
+
+final_listings <- final_listings %>% 
+  filter(review_scores_rating >0 | host_response_time !=0)
+
+```
+
+Identifying outliers in price column
+To identify the outliers in the price column, we have plotted the distribution of price. In the below plot, we can see that there few houses which have price 0. These erroneous values probably come from the user entering wrong valuesi into the dataset.
+
+``` {r outliers, fig_width=15, fig_height = 10}
+
+# Plotting the price histogram
+ggplot(final_listings, aes(price)) +
+  geom_histogram(bins = 30, aes(y = ..density..), fill = "navy") +
+  # Creating a density Plot
+  geom_density(alpha = 0.2, fill = "purple") +
+  # Using the theme stored above in th
+  th +
+  # Labelling the plot
+  ggtitle("Distribution of price",
+          subtitle = "The distribution is very skewed") +
+  xlab("Price")+
+  ylab("Density")+
+  geom_vline(xintercept = round(mean(final_listings$price), 2), size = 2, linetype = 3)
+
+```
+
+We can clearly see that this plot starts from zero and the distribution is positively skewed. We will remove all of the observations where the value of the price is zero. 
+
+``` {r}
+# Filtering for all observations where the price is zero and removing those observations
+final_listings <- final_listings %>%  
+  filter(price>0)
+```
+
+Using regular expressions (we will use grep later), we will be creating new logical attributes for tv, wifi, and internet from the amenities attribute. 
+
+``` {r}
+final_listings <- final_listings %>% 
+  # Using regex to find TV in amenities
+  mutate(has_tv = str_detect(final_listings$amenities, regex("TV", ignore_case = TRUE))) %>% 
+  # Using regex to find WiFi in amenities
+  mutate(has_wifi = str_detect(final_listings$amenities, regex("WiFi", ignore_case = TRUE))) %>% 
+  # Using regex to find Internet in amenities
+  mutate(has_internet = str_detect(final_listings$amenities, regex("Internet", ignore_case = TRUE)))
+```
+
+Now, let's try to use grep to create variables for has_gym incidcating whether there is a gym, has_pool if there is a pool, has_parking if there is a parking, has_private_entrance if there is a private entry, and has_balcony if there is a balcony. 
+
+``` {r}
+final_listings <- final_listings %>% 
+    # Using grep to find if the property contains a pool
+  mutate(has_pool = case_when(
+    grepl("Pool", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    # Using grep to find if the property contains a gym
+    has_gym = case_when(
+    grepl("Gym", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    # Using grep to find if the property contains parking
+    has_parking = case_when(
+    grepl("Parking", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE), 
+    # Using grep to find if the property contains private entrance
+    has_private_entrance = case_when(
+    grepl("Private entrance", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    # Using grep to find if the property contains a balcony
+    has_balcony = case_when(
+    grepl("balcony", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+  )
+```
+
+We had three neighbourhood attributes in our listings original dataset: the neighbourhood attribute, the neighbourhood_cleansed attribute and the neighbourhood_groups attribute. The third attribute was unfortunately useless to us since it contained 99.7% missing values and we had to drop it. Now, the neighbourhood attribute and the neighbourhood_cleansed dataset contain too many different kinds of values. What we want to do is use our city knowledge and understanding to group together different neighbourhoods into the same group. Our objective is to create 6 regions from all of these neighbourhoods, the 6 regions that we will create are: Schwabing, Bogenhausen, Haidhausen, Altstadt, Sendling, and Neuhausen-Nymphenburg-Laim.
+
+``` {r regions renamed}
+
+# Filtering the neighbourhoods into 6 groups
+final_listings <- final_listings %>% 
+  mutate(neighbourhood_cleansed= case_when(
+      neighbourhood_cleansed=="Schwabing-Freimann"~"Schwabing",
+      neighbourhood_cleansed=="Schwabing-West"~"Schwabing",
+      neighbourhood_cleansed=="Milbertshofen-Am Hart"~"Schwabing",
+      neighbourhood_cleansed=="Bogenhausen"~"Bogenhausen",
+      neighbourhood_cleansed=="Tudering-Riem"~"Bogenhausen",
+      neighbourhood_cleansed=="Berg am Laim"~"Bogenhausen",
+      neighbourhood_cleansed=="Au-Haidhausen"~"Haidhausen",
+      neighbourhood_cleansed=="Ramersdorf-Perlach"~"Haidhausen",
+      neighbourhood_cleansed=="Obergiesing"~"Haidhausen",
+      neighbourhood_cleansed=="Untergiesing-Harlaching"~"Haidhausen",
+      neighbourhood_cleansed=="Ludwigsvorstadt-Isarvorstadt"~"Altstadt",
+      neighbourhood_cleansed=="Thalkirchen-Obersendling-Forstenried-Fürstenried-Solln"~"Sendling",
+      neighbourhood_cleansed=="Sendling-Westpark"~"Sendling",
+      neighbourhood_cleansed=="Sendling"~"Sendling",
+      neighbourhood_cleansed=="Hadern"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Laim"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Pasing-Obermenzing"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Aubing-Lochhausen-Langwied"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Neuhausen-Nymphenburg"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Moosach"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Feldmoching-Hasenbergl"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Allach-Untermenzing"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Schwanthalerhöhe"~"Altstadt",
+      neighbourhood_cleansed=="Maxvorstadt"~"Altstadt",
+      neighbourhood_cleansed=="Altstadt-Lehel"~"Altstadt"
+      )) 
+
+final_listings
+
+# Checking for all the new final neighbourhoods and their counts
+final_listings %>%
+   count(neighbourhood_cleansed) %>%
+   arrange(desc(n))
+
+```
+
+Time to start with our EDA! :D 
+
+
+
+# Exploratory Data Analysis (EDA)
+
+
+
+Now that our dataset is cleaned, we can start our Exploratory Data Analysis (EDA). The purpose of this section is to explore the data, develop an understanding of its components and generate relevant questions for our analysis. 
+
+It appears that our dataset has 24 variables and  9,376 observations.The dataset is composed of 11 numerical variables, 5 factors ,3 characters, 4 logical and 1 data variable. 
+
+Nevertheless, just a global view of the data frame is not enough to get an accurate understanding of our database, hence we will calculate some basic descriptive statistics for the variables of interest.
+
+## Summary statistics of the variables of interest
+
+The function 'favstats' allows to quickly gain some information on the central tendency and variability of our variables of interest. 
+``` {r EDA favstats}
+  favstats(price~host_is_superhost, data=final_listings)
+  #mosaic package allows to obtain summary statistics for the variables of interest
+  #basically, we see how price is distributed among values that variables of interest take
+  favstats(price~room_type, data=final_listings) 
+  favstats(price~minimum_nights, data=final_listings) 
+  favstats(price~prop_type_simplified, data=final_listings)
+  favstats(price~neighbourhood_cleansed, data=final_listings)
+
+```
+
+From this analysis, a few figures are particularly informative. For instance, we learn that over 97% Airbnb offers in Munich are Entire Home/apartment and Private room, leaving a very small shares of Hotel and Shared Rooms. Most property types available are apartments, with very few house or condominium offering. Moreover, around 80% of all offers have 1 or 2 minimum night policy, and average cleaning fees are 19.21€. Finally, the neighborhood with the largest Airbnb supply is Altstadt, which is situated in the old city center of Munich, therefore very close to most touristic activities. 
+
+Let us dig a bit deeper on each several variables to more understanding of the reason underlying the variations in price. Besides checking the price distribution within a variable, it is also useful to see what particular range of values some variables take in order to build correct understanding of the data set.
+
+
+
+### Price 
+
+Let us start with a quick overview of the price variable. Here we can observe that the minimum price for a night in Airbnb is 9€, while the highest price is 999€. The average price for an accomodation on Airbnb in Munich is of 113.19€.  
+
+``` {r EDA price variability}
+glue("Minimum Price : {min(final_listings$price)} 
+     | Mean Longitude: {round(mean(final_listings$price), digits=2)} 
+     | Maximum Price: {max(final_listings$price)}")
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+#function round allows to round the values for more comprehensible representation
+```
+
+Let us dive a bit deeper in the variation of price analysis. The below graph allows us to observe the frequency of price for Airbnb in Munich. As we can see, the graph is right skewed, with the majority of observation around the mean of 113.19€. 
+
+``` {r  EDA price plot}
+#choosing dataset and frawing a plot
+ggplot(data = final_listings, 
+       mapping = aes(x = price)) + 
+      #setting variable for which we want to check the distribution
+         geom_histogram(fill = "navy", #choosing graph style
+                        bins = 50, 
+                        size = 0.8, 
+                        color = "black") +
+       #adding histogram style
+         ylab("Frequency") + #y-axis label
+         xlab("Price (in €)") + #x-axis label
+         labs(title = "Airbnb prices in Munich are right-skewed ", 
+              #setting graph title
+              subtitle = "Frenquency of price for an accomodation in Munich")+
+          #setting the chart style
+          theme_bw()
+
+```
+
+
+### Cleaning Fee
+
+Let us now study the cleaning fees, which are the main price addition imposed to customers. 
+This table reporting the central tendency of Cleaning fees allows to see that the variable is skewed to the right as median is far closer to the minimum value as compared to maximum. Also, we can see that the average cleaning fee is of 19.21$. 
+
+``` {r EDA cleaning fee}
+glue("Mean Cleaning Fee: {round(mean(final_listings$cleaning_fee),2)} #showing mean
+     | Minimum Cleaning Fee: {min(final_listings$cleaning_fee)} #showing min
+     | Median Cleaning Fee: {median(final_listings$cleaning_fee)} #showing median
+     | Maximum Cleaning Fee: {max(final_listings$cleaning_fee)}") #showing max
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+#function round allows to round the values for more comprehensible representation
+```
+
+Let us plot a graph to observe the frequency of observation for cleaning fees. Due to the  outliers present in our dataset, we will filter the graph to show us only the cleaning fees under 100€. Quite interestingly, the graph shows us that a high number of accomodation do not charge any cleaning fee. The cleaning fees are then distributed evenly between 1€ and 50€ approximately.  
+
+``` {r EDA cleaning fee plot}
+#creating new dataset
+clean_fee <- data.frame(
+  cleaning_fee = final_listings["cleaning_fee"][final_listings["cleaning_fee"] <= 100])
+#choosing the cleaning fee cases such that it is below or equal to 100
+  ggplot(data = clean_fee, #basic plot
+       mapping = aes(x = cleaning_fee)) +
+    #choosing x variable for which we show distribution
+         geom_histogram( #choosing graph type
+           fill = "navy", 
+           bins = 50, 
+           size = 0.8, 
+           color = "black") +
+         #adding histogram style
+         theme_bw() + 
+        #choosing theme
+         ylab("Frequency") + #y-axis label
+         xlab("Cleaning Fee (in €)") + #x-axis label
+         labs(title = "How high are the cleaning fees ?", 
+              #adding the title
+              subtitle = "Cleaning Fees histogram")
+              #adding the subtitle
+```
+
+
+### Number of Events
+
+Similary to cleaning fees, the number of reviews has some very high outliers, as the difference between the median and the maximum value is very consistent. The median of 4 reviews per Airbnb offering indicates that the maximum presented below is probably an outlier, 688 being a very large number for a single accomodation. The average number of reviews is of 16.73. 
+
+``` {r EDA number of reviews}
+glue("Minimum Number of Reviews: {min(final_listings$number_of_reviews)} 
+     | Median Number of Reviews: {round(median(final_listings$number_of_reviews), digits=2)} 
+     |  Mean Number of Reviews: {round(mean(final_listings$number_of_reviews), digits=2)} 
+     |Maximum Number of Reviews: {max(final_listings$number_of_reviews)}")
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+#function round allows to round the values for more comprehensible representation
+```
+
+
+The following graph allows us to look at the distribution of number of reviews (filtered for less than 50 reviews, to eliminate outliers). The graph is right skewed, with most number of reviews being between 0 and 10. 
+Let us now have a look at the average review score. 
+
+
+
+``` {r  EDA number reviews}
+#creating new dataset
+reviews <- data.frame(
+  number_of_reviews = final_listings["number_of_reviews"][final_listings["number_of_reviews"] <= 50])
+#choosing the cases where bumber of reviews is below or equal to 50
+  ggplot(data = reviews, #drawing a plot
+       mapping = aes(x = number_of_reviews)) +
+    #choosing variable for which we build distribution
+         geom_histogram( #choosing graph type
+           fill = "navy", 
+           bins = 50, 
+           size = 0.8, 
+           color = "black") +
+    #adding some style for the histogram
+         theme_bw() +
+    #choosing theme
+         ylab("Frequency") + #y-axis label
+         xlab("Number of Reviews") + #x-axis label
+         labs(title="Distribution of number of reviews appears to be right-skewed",
+              #adding title to the graph
+              subtitle = "Number of Reviews Histogram")
+              #adding subtitle
+```
+
+
+### Reviews
+
+Any Airbnb user knows how important are reviews! Let's see how how good are bavarians in receiving guest. 
+
+``` {r EDA score of reviews}
+final_listings %>% 
+  summarise(Min = min(review_scores_rating,na.rm=TRUE),Mean = round(mean(review_scores_rating,na.rm=TRUE), 2), Max = max(review_scores_rating,na.rm=TRUE))
+```
+
+The average review score for Airbnb accommodations in Munich is of 93.68, which is very high (definitely higher than our GPA!).
+As we can see from the below graph, the distribution of reviews is left skewed, with the majority of grades being between 75 and 100. Therefore, Munich hosts seem to be very welcoming !
+
+
+``` {r  EDA cleaning reviews}
+ggplot(data = final_listings,
+       #choosing data and buiding graph
+       mapping = aes(x = review_scores_rating)) +
+  #choosing variable to build distribution for
+         geom_histogram(
+           #choosing graph type
+           fill = "navy", 
+           bins = 50, 
+           size = 0.8, 
+           color = "black") +
+  #adding some style to the chart
+         theme_bw() +
+  #setting theme
+         ylab("Frequency") + #y-axis label
+         xlab("Review Scores") + #x-axis label
+         labs(title="Munich Airbnb hosts score quite high",
+              #adding name to the graph
+              subtitle = "Review Scores Histogram")
+              #adding subtitle
+```
+
+
+### Guests
+
+The same analysis applies to the number of Guest included in a single Airbnb. The minimum being (logically) 1 and the median being 1 as well, this indicates that the majority of observations have 1 guest included in the accommodation. Once again, the distribution is right-skewed, with the largest observation being 200, most probably an outlier as well. 
+
+``` {r EDA guests included}
+glue("Minimum Guests Included: {min(final_listings$guests_included)} 
+     | Median Guests Included: {median(final_listings$guests_included)} 
+     | Maximum Guests Included: {max(final_listings$guests_included)}")
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+```
+
+
+# Geography
+
+For some variables it is useful to see what exact values are the most frequent. So we did for neighborhood variable which we specified at 11 different areas. As we can see, Altstadt and Neuhausen-Nymphenburg-Laim areas are far the most frequent in terms of AirBnB property options. These two regions, on aggregate, correspond to almost 50% of rental options on the website. 
+
+``` {r EDA frequency Neighbourhood}
+#new dataset
+freq_neighbourhood <- data.frame( 
+                        cbind(
+                            Frequency = table(final_listings$neighbourhood_cleansed),
+                            #adding frequency table
+                            Percent = prop.table(table(final_listings$neighbourhood_cleansed)) * 100
+                            #adding percentage table
+                                    ))
+
+freq_neighbourhood<-freq_neighbourhood %>%
+  arrange(desc(Percent)) 
+#setting descending order to represent frequency and percentage of neighbourhoods
+freq_neighbourhood
+#showing the table
+```
+
+Let us use a map to understand the reason underlying the over representation of those neighborhoods. From this map, it is evident that central and the western are particularly popular for Airbnb. After consulting our fellow german student, it appears that those neighborhoods are the touristic hot spots of the city. 
+As previously mentioned, Altstadt is the old city center of Munich and has a lot of museums, monuments, restaurants and other touristic activities (you can even surf in Altstadt!). Therefore, it is logical to see a large supply of Airbnb in this part of the city. 
+On the other hand, the relatively high presence of Airbnb offering from Neuhausen-Nymphenburg-Laim is explained by the fact that Oktoberfest world-known celebrations take place in this part of the city. However, this district is also the largest in terms of size, which explains it high supply in Airbnb as well. 
+Finally, Bogenhausen is the least popular district as the neighborhood is very residential. 
+
+
+``` {r EDA mapping of Neighbourhood}
+#choosing dataset
+listings %>% 
+  select(longitude, neighbourhood_cleansed, 
+         neighbourhood, latitude, price,
+         name, room_type, minimum_nights) %>%
+  #selecting the variables of interest
+  leaflet() %>%
+  #creating the map
+  setView(lng = 11.5820, lat = 48.1351, zoom = 10) %>%
+  #setting map specs
+  addTiles() %>% 
+  #adding a tile layer to the map
+  
+  addMarkers(clusterOptions = markerClusterOptions(),
+  #adding markers to the map
+             ~longitude, ~latitude, 
+             label = ~paste(name,"|", 
+                            "Type Room :", room_type,"|",
+                            "Min Nights :", minimum_nights))
+              #labelling the map
+```
+
+
+Now that we identified the most popular neighborhoods in terms of number of Airbnb, let us compare them to the average price for each of these district. As we could expect, the most popular neighborhood, Altstadt, is also the most expensive. The remaining neighborhoods share a very similar price range. 
+
+``` {r EDA comparing of Neighbourhood}
+#creating dataset
+compare_neighborhoods <- final_listings %>% 
+  group_by(neighbourhood_cleansed) %>% 
+  #choosing grouping variable
+  summarise(Count= count(neighbourhood_cleansed), 
+            Percentage = round((Count/9376)*100, 2), 
+            Mean = round(mean(price),2)) %>% 
+  #adding some summary statistics of price in different areas
+  arrange(desc(Percentage))
+  #representing the data in descending order
+  
+compare_neighborhoods
+#showin the table
+```
+
+
+
+### Property Type
+
+Let us now look into the distribution of property types. We have divided our property types in 5 different categories: Apartment, House, Condominium, Serviced Apartment and Others. As previously mentioned, the vast majority (86%) of properties available on Airbnb in Munich are apartments, which is not surprising for a highly urban city (see frequency graph). 
+
+``` {r EDA property type1}
+freq_prop <- data.frame(cbind(Frequency = table(final_listings$prop_type_simplified), Percent = prop.table(table(final_listings$prop_type_simplified)) * 100))
+freq_prop<-freq_prop %>% 
+  arrange(desc(Percent))
+freq_prop
+```
+
+``` {r  EDA prop type distribution}
+#new dataset for additional theme
+theme_additional <- theme(plot.title = 
+                            element_text(size = 18, face = "bold"),
+                          axis.title.x = 
+                            element_text(size = 10, face = "bold" ),
+                          axis.title.y = 
+                            element_text(size = 14, face = "bold"),
+                          legend.position = "none")
+#correcting the text size and fontface
+#removing the legend
+
+ggplot(data = freq_prop, mapping = 
+         #building graph
+         aes(
+             y = reorder(row.names(freq_prop), Frequency),
+              x = Frequency )) +
+  #setting x and y variables
+  #function reorder allows the graph to be in descending order
+         geom_bar(
+           #selecting graph type
+           stat = "identity", 
+           mapping = aes
+           (fill = row.names(freq_prop), 
+             color = row.names(freq_prop)), 
+           #painting the graph elements based on their frequency
+           #outline is also painted according to frequency
+           alpha = .7, 
+           #setting transparency
+           size = 1.1) +
+          #setting size
+         geom_label(mapping = aes(label=Frequency), 
+                    fill = "black", 
+                    size = 3, 
+                    color = "white", 
+                    fontface = "bold", 
+                    hjust=.7) +
+  #using geom_label to add informative labels
+  #setting black fill and white bold font
+         ylab("") +
+          #removing y-axis name
+         labs(title="Apartment is the most common property 
+              type in Munich AirBnB", 
+              subtitle = "Property type by frequency")+
+  #adding title and subtitle to the graph
+         theme_bw()+
+         theme_additional
+#adding black and white theme and setting font settings specified above
+````
+
+Let us see if the type of property has any influence on price. 
+The average price for an apartment is very close to the mean price for an accomodation in Munich on Airbnb (see table below). The most expensive property types are serviced apartments, which are also the least represented. Quite surprsingly, the average price for renting a house through Airbnb is higher than renting an apartment, which is probably due to the fact that houses must be in suburbs, and therefore further away from the touristic attractions !
+
+
+``` {r EDA comparing of property type}
+#new dataset
+compare_property <- final_listings %>% 
+  group_by(prop_type_simplified) %>% 
+  #choosing grouping variable
+  summarise(Count= count(prop_type_simplified), 
+            Percentage = round((Count/9376)*100, 2), 
+            Mean = round(mean(price, na.rm=TRUE),2)) %>% 
+  #calculating summary statistics
+  arrange(desc(Percentage))
+#putting the table values in descending order according to the percentage
+  
+compare_property
+#showing the table
+
+
+```
+
+
+### Room Type
+
+Similary, let create a frequency table for the distribution of room types. We observe that the vast majority (over 95%) of the accommodations available in Munich are Entire Homes/Apartments and Private Rooms.
+
+
+``` {r EDA room type}
+#new dataset
+freq_room_type <- data.frame(
+                      cbind(
+                          Frequency = table(final_listings$room_type), 
+                          #adding frequency variable
+                          Percent = prop.table(table(final_listings$room_type))* 100))
+                          #adding percentage variable 
+
+freq_room_type<-freq_room_type %>% 
+  arrange(desc(Percent))
+#putting table in descending order
+freq_room_type
+#showing table
+
+```
+
+With regards to price, the graph below tells us that Hotel Rooms are unsurprisingly more expensive than entire house/apartments or private rooms. 
+
+``` {r}
+mean_room_type <- aggregate(list(average_price = final_listings$price), list(room_type = final_listings$room_type), mean)
+mean_room_type$Percent <- prop.table(mean_room_type$average_price) * 100
+mean_room_type
+```
+
+
+``` {r  EDA room type graph}
+#new dataset
+final_listings<-final_listings %>%
+  mutate(room_type=(room_type))
+#new variable which is a factor variable out of room type
+  
+#theme dataset
+theme_add2 <- theme(
+              plot.title = element_text(size = 18, face = "bold"),
+              axis.text.x = element_text(size = 14, face = "bold"),
+              axis.text.y = element_text(size = 14, face = "bold"),
+              axis.title.x = element_text(size = 14),
+              axis.title.y = element_text(size = 14),
+              legend.position = "none")
+#removing the legend
+#setting text sizes and fontfaces
+
+ggplot(data = mean_room_type, #building a graph
+       aes(y=average_price, 
+           x=reorder(room_type, average_price))) +
+  #choosing x and y variables
+  #using reorder we show the diagram in descending order
+         coord_flip() +
+  #coordinate flip allows to make graph horizontal
+         geom_segment(aes
+                      (xend=room_type, 
+                        yend=0, 
+                        color = room_type), 
+                      size = 2) +
+        #choosing graph type lines
+        #coloring them according to room_type
+        #choosing the size
+         geom_point(size=7, mapping = 
+                      aes(color = room_type)) +
+        #adding points and colors based on room type and their size
+         theme_minimal() +
+        #adding theme
+         xlab("") +
+        #removing x-axis label
+         ylab("Price (in € per night)") +
+        #adding y-axis label
+         labs(title="Hotel rooms are the most expensive ones", 
+              subtitle = "Room type by average price")+
+          #adding title and subtitle to the graph
+         theme_add2
+        #adding the font settings and legend removal specified above 
+
+
+```
+
+### Host is Super Host
+
+Finally, let us look at the frequency table for the type of host. This is a logical variable (Yes or No) with information relating to whether our host is a super host or not. As we can see from the below table, over 85% of the hosts in Munich are not superhost. 
+
+``` {r}
+mean_host_type <- aggregate(list(average_price = final_listings$price), list(host_is_superhost = final_listings$host_is_superhost), mean)
+mean_host_type$Percent <- prop.table(mean_host_type$average_price) * 100
+mean_host_type
+
+```
+
+``` {r EDA superhost type}
+#new dataset
+freq_host_type <- data.frame(
+                      cbind(
+                        Frequency = table(final_listings$host_is_superhost), 
+                        #adding frequency variable to the table
+                        Percent = prop.table(table(final_listings$host_is_superhost))* 100))
+                        #adding percent variable to the table
+
+freq_host_type<-freq_host_type %>% 
+  arrange(desc(Percent))
+#putting the table in descending order
+freq_host_type
+#showing the table
+
+```
+
+Moreover, the following graph shows us that being a super host does not seem to have a great influence on price. 
+
+
+``` {r  EDA superhost}
+#new dataset
+final_listings<-final_listings %>%
+  mutate(host_is_superhost=factor(host_is_superhost))
+#creating new variable which is a factor out of host_is_superhost
+
+#new theme dataset
+theme_add3 <- theme(plot.title = element_text(size = 23, hjust = .5),
+              axis.text.x = element_text(size = 19, face = "bold"),
+              axis.text.y = element_text(size = 19, face = "bold"),
+              axis.title.x = element_text(size = 19),
+              axis.title.y = element_text(size = 19),
+              legend.position = "none")
+#removing legend
+#changing the font size and fontface on the labels of the graph and graph text
+  
+ggplot(data = mean_host_type, #building graph
+       aes(y=average_price, 
+           x=reorder(host_is_superhost, average_price) 
+           )) +
+  #choosing x and y variables
+  #using reorder we show the diagram in descending order
+         coord_flip()+
+  #making graph horizontal
+         geom_segment(aes(
+           xend=host_is_superhost, 
+           yend=0, 
+           color = host_is_superhost), 
+           size = 2) +
+         #choosing graph type lines
+        #coloring them according to room_type
+        #choosing the size
+         geom_point(size=5, 
+                    mapping = aes(
+           color = host_is_superhost)) +
+          #adding points and colors based on room type and their size
+         theme_minimal() +
+        #setting theme
+         xlab("") +
+        #removing x-axis label
+         ylab("Price (in € per night)") +
+        #adding y-axis label
+         labs(title="Super hosts provide cheaper property", 
+              subtitle = "Super host (Y/N) by average price")+
+              #adding title and subtitle to the graph
+         theme_add2
+          #applyting font settings and legend removal specified above 
+```
+
+
+
+## Correlation
+
+### Correlation Coefficient
+
+Now that we have developed a thorough understanding of our variables, let’s compute the correlation coefficient between the most interesting variables of our analysis. This measure allows to measure the strength of the relationship between the relative movement of two variables. To do so, we use the "ggpair" formula.  
+
+For the purpose of our analysis, we are primarily interested in the interaction between the price attribute and the other attributes. The variable with the highest coefficient of correlation is cleaning fees, which is logical as this attribute has a direct numerical influence on the overall price of an Airbnb stay. Moreover, an extra person in the accommodation also raises the price (corr = 0.112). The three remaining variable (number of reviews, average score rating and guests included) display a very low correlation with price. 
+Regarding the rest of the analysis, most correlations are very low with the exception of the relation between an extra person in the accommodation and the cleaning. 
+
+Overall, this correlation matrix shows us that the coefficients are quite low among the selected variables. This implies that no variables should be dropped for the model we wish to build. 
+
+``` {r  EDA ggpairs, fig.width =10, fig.height=10,message = FALSE, warning = FALSE }
+#final_listings %>% 
+ # select(price, cleaning_fee, extra_people, number_of_reviews, review_scores_rating, longitude, latitude, minimum_nights, guests_included) %>% 
+  #ggpairs()
+
+final_listings %>% 
+  select(price, cleaning_fee, extra_people, number_of_reviews, review_scores_rating, guests_included) %>% 
+  #order variables they will appear in ggpairs()
+  ggpairs()+
+  theme_bw()
+```
+
+
+### Correlation Matrix
+
+Now that the correlation coefficient have been computed, let's move on to the correlation matrix. 
+
+```{r corr matrix}
+airbnb_cor<-final_listings[, sapply(final_listings, is.numeric)]
+airbnb_cor<-airbnb_cor[complete.cases(airbnb_cor), ]
+correlation_matrix<-cor(airbnb_cor, method='spearman')
+corrplot(correlation_matrix, method='color')
+```
+
+The plot above is indicative of correlations between the numeric variables in our dataset. 
+The darker is the square color, the higher is the correlation, where positive correlations are shown by blue squares and negatives are vice versa shown by warmer colors. The diagonal is dark blue as it shows the correlations between identical variables (correlation=1). Some obviously correlated variables like number of bedrooms and beds require no explanation for quite high correlation between them. Intuitively, cleaning fee is positively correlated with the number of guests included as larger number of visitors usually means larger property rented and hence higher cleaning fee. Similarly, price is positively correlated with the number of bedrooms that property provides and hence with the number of people included too.Nevertheless, some weak negative correlation can be seen between price and number of reviews. This may be caused by the fact that cheaper property tend to be rented more often. One more insight from this diagram is the fact that availability throughout the year is negatively correlated to review scores which means that the property with high rating is highly demanded.
+
+Creating total price for 4 days
+
+TODO: Create a new variable called price_4_nights that uses price, cleaning_fee, guests_included, and extra_people to calculate the total cost for two people to stay at the Airbnb property for 4 nights. This is the variable  we want to explain.
+
+``` {r}
+final_listings <- final_listings %>% 
+  mutate(price_4_nights=price*4+
+           cleaning_fee+
+           if_else(guests_included==1, extra_people*4,0),
+         log_price_4_nights=log(price_4_nights))
+```
+
+# Performing the actual Price Prediction (Regression Analysis)
+
+Before building our linear regression model, we will split our dataset into a training dataset and a testing dataset. Our goal is to create a linear regression model that predicts the price as accurately as possible. We will train our supervised machine learning model (multiple linear regression) on the training dataset and validate our findings using the testing dataset. 
+
+TODO: Delete this chunk of code that follows
+``` {r}
+final_listings <- final_listings %>% 
+  filter(number_of_reviews > 10) 
+```
+
+
+``` {r}
+# Adding an "id" attribute that describes the raw number 
+final_listings <- final_listings %>% mutate(id = row_number())
+
+# Creating our training dataset, which contains 70% of the data; we are filtering by (price > 0) to ensure that we don't leave in any 0 prices, as linear regression models don't work with 0s inside the model.
+airbnb_train <- final_listings %>% sample_frac(.7) %>% filter(price > 0)
+
+# Creating our training datset using antijoin: We select everything from our final_listings dataframe that isn't contained in our training dataset. 
+airbnb_test  <- anti_join(final_listings, airbnb_train, by = 'id') %>% filter(price > 0)
+
+# Sanity Checking in order to evaluate whether a claim or the result of a calculation can possibly be true
+nrow(airbnb_train) + nrow(airbnb_test) == nrow(final_listings %>% filter(price > 0))
+
+# Outputting the training dataset
+airbnb_train
+```
+
+### Model 1
+
+We will build our first regression model using the explanatory variables: prop_type_simplified, number_of_reviews, and review_scores_rating. We want to see what kind of impact do the combination of these three attributes in predicting the price of a house. 
+
+``` {r}
+# Building the first model on the training dataset using the variables prop_type_simplified, number_of_reviews, and review_scores_rating
+
+model1 <- lm(log_price_4_nights ~ prop_type_simplified + 
+                                  number_of_reviews + 
+                                  review_scores_rating, 
+                                  data = airbnb_train)
+summary(model1)
+
+```
+We start with an R2 of ~0.02 which is super low. This means that our prediction model is 2% better than had we chosen the mean price to make our prediction. Now let's try to see the statistics for this model. 
+
+``` {r}
+# Saving the statistics of the model into the model table. 
+model1_table <- tidy(model1)
+model1_table
+```
+
+Let us try to see what would happen if we had trained our model on our entire dataset instead of just the training dataset. 
+
+``` {r}
+# Building a second model on the entire dataset to check how it performs 
+
+model1_1 <- lm(log_price_4_nights ~ prop_type_simplified + 
+                                  number_of_reviews + 
+                                  review_scores_rating, 
+                                  data = final_listings)
+
+summary(model1_1)
+tidy(model1_1)
+anova(model1_1)
+
+```
+This doesn't look too good to be honest. These 3 variables aren't great explanatory variables when it comes to predicting the price. Now let's try to create the equation of the price of 4 nights in the form of these 3 attributes. 
+
+General equation for the price 4 nights:
+$$\hat{y}= \hat{price~4~nights} = 6.085 + 0.0407 . 1_{is,condominium}(x) - 0.1072 . 1_{is,house}(x) + 0.1087 . 1_{is,other}(x) \\ + 0.4423 . 1_{is,serviced~apartment}(x) - 0.001 * number~of~reviews - 0.001 . review~scores~rating$$
+Coefficients of prop_type_simplified:
+$$+ 0.041 . 1_{is,condominium}(x) - 0.1072 . 1_{is,house}(x) + 0.1087 . 1_{is,other}(x) + 0.4423 . 1_{is,serviced apartment}(x)$$
+
+Coefficient of review_scores_rating:
+$$\ - 0.001 $$
+```{r}
+
+# Autoplotting using autoplot and using VIF to calculate the Variance Inflation Factor (VIF) for your predictors and determine whether you have colinear variables. 
+
+autoplot(model1)
+car::vif(model1)
+```
+Residuals vs Fitted plot is used to check the linear relationship assumptions. We want the line to be horizontal. In this model, it is not really horizontal.
+
+Normal Q-Q plot is used to examine whether the residuals are normally distributed. It’s good that the residuals points follow the straight dashed line.
+
+Scale-Location plot is used to check the homogeneity of variance of the residuals. We want a horizontal line with equally spread points. In this model, it can be seen that the variability of the residual points increases with the value of the fitted outcome variable, suggesting non-constant variances in the residuals errors.
+
+The VIF scores are in a reasonable range in this model. 
+
+### Model 2
+
+
+``` {r}
+
+# Building a second model based on the prop_type_simplified, number_of_reviews, review_scores_rating, and room_type attributes
+
+model2 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type, data = airbnb_train)
+
+# Summary of the model
+summary(model2)
+```
+
+Our R2 increases to ~13% after account for the room_type attribute - beautiful. While using the room_type attribute to explain the price of a room, it _does_ definitely attribute some value. This can probably be explained by the fact that while booking a hotel room, it's extremely important for us to know what type of room are we paying for. 
+
+```{r}
+
+# Autoplotting the second model
+
+autoplot(model2)
+car::vif(model2)
+```
+In this model, the residuals vs fitted plot it is still not really horizontal, but it is pretty close to it.
+The Normal Q-Q plot looks good. 
+In this model, it can be seen that the variability of the residual points increases with the value of the fitted outcome variable, suggesting non-constant variances in the residuals errors.
+
+The VIF seems to be in an acceptable range. 
+
+### Model 3
+
+Most owners advertise the exact location of their listing (is_location_exact == TRUE), while a non-trivial proportion don’t. Now, how important is this exactly while trying to explain the price? 
+
+``` {r}
+
+# Model 3 tries to use the is_location_exact attribute to figure out how much the price can be explained away by the location
+
+model3 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type + is_location_exact, data = airbnb_train)
+summary(model3)
+
+```
+
+The exact location doesn't really factor in into the model's accuracy much. This can probably be explained by the fact that people don't usually find out that the listing isn't at the exact location until they reach the specified location on the day of checking in. 
+
+```{r}
+# Autoplotting the third model.
+autoplot(model3)
+car::vif(model3)
+```
+
+### Model 4
+
+Our next goal is to check how the updated neighbourhood_cleansed affects our model's R^2. To do this, we will integrate it as an explanatory variable into our model. 
+
+``` {r}
+# Model4: Prediction model based on prop_type_simplified, number_of_reviews, review_scores_rating, and review_scores_rating.
+model4 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type + neighbourhood_cleansed, data = airbnb_train)
+summary(model4)
+
+``` 
+
+The model's accuracy increases by 3% using the neighbourhoods_cleansed attributed which contains 6 groups of neighbourhoods. This can probably be explained by the fact that location does play a major role while booking an airbnb.
+
+Now, let's try to see how much our price attribute depends upon the cancellation policy. We will use the cancellation_policy to build model 5. 
+
+### Model 5
+
+``` {r}
+# Model 5: Prediction price build on prop_type_simplified, number_of_reviews, review_scores_rating, room_type, neighbourhood_cleansed, and cancellation_policy. 
+model5 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type + neighbourhood_cleansed + cancellation_policy, data = airbnb_train)
+summary(model5)
+tidy(model5)
+
+
+```
+
+Our t_stat for cancellation_policymoderate and cancellation_policysuper_strict_30 seems to be insignificantly low. However, maybe because the t-stat of the cancellation_policystrict_14_with_grace_period is quite high, the accuracy of the model seems to have increased. Now let's try to plot this. 
+
+```{r}
+# Autoplotting model 5
+
+autoplot(model5)
+car::vif(model5)
+```
+
+
+### Model 6
+
+``` {r}
+# Building our own custom training model with custom explanatory attributes
+
+# First we filter out the training dataset using the quantiles 
+learn <- airbnb_train %>% 
+  filter(price < quantile(airbnb_train$price, 0.9) & price > quantile(airbnb_train$price, 0.1)) %>% 
+  tidyr::drop_na()
+
+# Now we build a model to predict the logarithmic price by adding several attributes to the previous model such as availability_365, has_gym, has_tv, has_wifi, has_internet, has_pool, has_gym, has_private_entrance, has_parking and accomodates
+model6 <- lm(log(price_4_nights) ~ prop_type_simplified + number_of_reviews + review_scores_rating + bedrooms + accommodates + room_type + cancellation_policy + neighbourhood_cleansed + availability_365 + last_review + has_tv + has_wifi + has_internet + has_pool + has_gym + has_private_entrance + has_parking + has_balcony, data = learn)
+summary(model6)
+```
+
+
+From the values of the t-stats it is quite clear that the logical amenities (gym pool etc) don't really play a huge part while predicing the price of an airbnb. So we are going to remove them while building our best model. 
+
+### Best Model
+
+``` {r}
+
+# In this model, we drop all of the logical amenity attributes and instead incorporate instant_bookable, availability_90, and availability_365 attributes 
+
+bestmodel <- lm(log(price_4_nights) ~ prop_type_simplified  + review_scores_rating + bedrooms + accommodates + room_type + cleaning_fee + instant_bookable + neighbourhood_cleansed + availability_365 + availability_90 + last_review, data = learn)
+summary(bestmodel)
+
+```
+
+Our best model is comprised of the attributes prop_type_simplified, review_scores_rating, bedrooms, accommodates, room_type,  cleaning_fee, instant_bookable, cancellation_policy, neighbourhood_cleansed, availability_365, availability_90, and  last_review. The highest R2 that we got with our training set was 0.4473. Now we will try to execute our best model on the test set and evaluate the RMSE.
+
+
+``` {r}
+# Filtering the testing set 
+learn_test  <- anti_join(final_listings, learn, by = 'id') %>% 
+  filter(price < quantile(airbnb_train$price, 0.9) & price > quantile(airbnb_train$price, 0.1)) %>% 
+  tidyr::drop_na()
+
+# Making predictions on the testing set 
+predictions <- bestmodel %>% predict(learn_test)
+
+# Evaluating the root mean squared errors 
+rmse(predictions, learn_test$price_4_nights)
+
+
+```
+
+The RMSE comes out to be 390.9039
+
+### HuxTable Summary
+
+```{r}
+library(huxtable)
+
+huxreg(list("Model 1" = model1, "Model 2" = model2, "Model 3" = model3, "Model 4" = model4, "Model 5" = model5, "Model 6" = model6, "Model 7" = bestmodel),
+                 statistics = c('#observations' = 'nobs', 
+                                'R squared' = 'r.squared', 
+                                'Adj. R Squared' = 'adj.r.squared', 
+                                'Residual SE' = 'sigma'), 
+                 bold_signif = 0.05, 
+                 stars = NULL
+) %>% 
+  set_caption('Comparison of models')
+```
+
+### Predicting Private Rooms in Apartments 
+
+Finally, we use the best model you came up with for evaluating prediction. Our goal is to find single room apartments with at least 10 reviews and an average rating of at least 90. We want to use our bestmodel to predict the total cost to stay at this airbnb for 4 nights. 
+
+``` {r}
+
+# We filter out all the listings that we are interested in from the testing set 
+
+questioned_listings <- airbnb_test %>% 
+                        filter(room_type == "Private room" & prop_type_simplified == "Apartment" & number_of_reviews >= 10 & review_scores_rating >= 90)
+
+# We add the id attribute through the row numbers 
+questioned_listings <- questioned_listings %>% 
+  mutate(id=row_number())
+
+# Displaying the head of the questioned_listings
+head(questioned_listings)
+```
+Now that we have our questioned_listings that we want to look at, the next step is to predict the prices using the predict function and make sure to include the upper and lower limits of the 95% confidence interval.
+
+``` {r}
+# Now it's time for us to evaluate the actual predictions 
+predicted_prices <- predict(bestmodel, newdata = questioned_listings, interval = "confidence") %>% 
+  exp()
+
+# Adding the row_number attribute to the predictd_prices table after converting it into a dataframe
+predicted_prices <- predicted_prices %>% 
+  data.frame() %>% 
+  mutate(id = row_number())
+
+# Inner joining the predited_prices and questioned_listings tables 
+results <- inner_join(questioned_listings, predicted_prices, by="id")
+
+results_new <- results %>% 
+  summarize(lower_bound = mean(lwr),
+            upper_bound = mean(upr), 
+            predicted_price = mean(fit))
+
+head(results)
+results_new
+```
+
+Voila! We have finally completed a linear regression model that makes predictions (stored in fit) that don't seem to far from the actual price_4_nights. The R^2 that we were able to achieve with our best model was only 0.45 on the training dataset but this could probably be used using a random forest classifier. We will explore better different models and try to evaluate how well we can do with different models soon! :) 
+
+
+
