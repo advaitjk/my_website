@@ -7,7 +7,7 @@ description:
 draft: false
 image: pic05.jpg
 keywords: "IMDB Dataset"
-slug: blog6
+slug: blog1
 title: Munich Airbnb Price Prediction
 ---
 
