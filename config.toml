@@ -19,7 +19,7 @@ disqusShortname = ""
   # CSS class.
 
   # Provide your metadata here.
-  name = "Advait Jayant 1"
+  name = "Advait Jayant"
   description = "DS/ML/BDA Expert"
 
   # Link custom assets relative to /static
@@ -92,8 +92,8 @@ disqusShortname = ""
     # Display your showcases here.
     
     [[params.tiles.showcase]]
-      title = "Data Science and Machine Learning Projects"
-      subtitle = "ADVAIT CREATED 18 EDUCATIONAL VIDEO COURSES IN THE FIELD OF DATA SCIENCE AND MACHINE LEARNING"
+      title = "Housing Prices Prediction Challenge"
+      subtitle = "Ames Housing Dataset"
       image = "pic01.jpg"
       url = "blogs/aliquam"
 
