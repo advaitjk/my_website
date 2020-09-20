@@ -82,7 +82,7 @@ disqusShortname = ""
     # To change the background image on the homepage banner, replace 'banner.jpg' in
     # the 'static/img' folder.
     title = "Welcome to Advait Jayant's Portfolio"
-    subtitle = "THIS WEBSITE IS DESIGNED WITH THE OBJECTIVE OF ALLOWING A VISITOR TO EXPERIENCE THE WORK OF ADVAIT JAYANT FIRST-HAND.\n Special thanks to Professor Kostis for motivating me to build this website. Thank you Marco Laube and Alessandro Angeletti, and Deniz Ozdemir for helping me! "
+    subtitle = "THIS WEBSITE IS DESIGNED WITH THE OBJECTIVE OF ALLOWING A VISITOR TO EXPERIENCE THE WORK OF ADVAIT JAYANT FIRST-HAND.\n Special thanks to Professor Kostis for motivating me to build this website. Thank you Marco Laube, Alessandro Angeletti, and Deniz Ozdemir for helping me! "
     buttonText = "Let's begin our journey! :)"
 
 
