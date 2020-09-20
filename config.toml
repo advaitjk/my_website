@@ -95,7 +95,7 @@ disqusShortname = ""
       title = "Housing Prices Prediction Challenge"
       subtitle = "Ames Housing Dataset"
       image = "pic01.jpg"
-      url = "blogs/aliquam"
+      url = "projects/project1"
 
     [[params.tiles.showcase]]
       title = "Tempus"
