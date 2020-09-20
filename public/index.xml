@@ -6,57 +6,60 @@
     <description>Recent content on Portfolio Website for Advait Jayant</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 31 Oct 2017 22:42:51 -0500</lastBuildDate>
+    <lastBuildDate>Tue, 31 Oct 2017 22:27:21 -0500</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Aliquam</title>
-      <link>/blogs/aliquam/</link>
-      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
-      
-      <guid>/blogs/aliquam/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Tempus</title>
-      <link>/blogs/tempus/</link>
+      <title>House Price Prediction</title>
+      <link>/blogs/blog1/</link>
       <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
       
-      <guid>/blogs/tempus/</guid>
-      <description></description>
+      <guid>/blogs/blog1/</guid>
+      <description>Executive Summary  Introduction The Ames Housing dataset was compiled by Dean De Cock for use in data science education. It’s an incredible alternative for data scientists looking for a modernized and expanded version of the often cited Boston Housing dataset. Let’s say that we are looking to buy a house in Ames, Iowa, and we want to find the best possible house for our price range, so we are going to use different supervised machine learning techniques to actually find how much this property will set us back!</description>
     </item>
     
     <item>
-      <title>Hello R Markdown</title>
-      <link>/post/2015-07-23-r-rmarkdown/</link>
-      <pubDate>Thu, 23 Jul 2015 21:13:14 -0500</pubDate>
+      <title>House Price Prediction</title>
+      <link>/projects/aliquam/</link>
+      <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
       
-      <guid>/post/2015-07-23-r-rmarkdown/</guid>
-      <description>R Markdown This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see http://rmarkdown.rstudio.com.
-You can embed an R code chunk like this:
-summary(cars) ## speed dist ## Min. : 4.0 Min. : 2.00 ## 1st Qu.:12.0 1st Qu.: 26.00 ## Median :15.0 Median : 36.00 ## Mean :15.4 Mean : 42.98 ## 3rd Qu.</description>
+      <guid>/projects/aliquam/</guid>
+      <description>#Executive Summary
+#Introduction
+The Ames Housing dataset was compiled by Dean De Cock for use in data science education. It’s an incredible alternative for data scientists looking for a modernized and expanded version of the often cited Boston Housing dataset. Let’s say that we are looking to buy a house in Ames, Iowa, and we want to find the best possible house for our price range, so we are going to use different supervised machine learning techniques to actually find how much this property will set us back!</description>
     </item>
     
     <item>
-      <title>ipsum</title>
-      <link>/blogs/ipsum/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <title>Netflix and Chill</title>
+      <link>/blogs/blog4/</link>
+      <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
       
-      <guid>/blogs/ipsum/</guid>
-      <description>// Inverse color of navigation bar. $(&amp;#39;.navbar-inverse&amp;#39;).removeClass(&amp;#39;navbar-inverse&amp;#39;).addClass(&amp;#39;navbar-default&amp;#39;); // Inverse color of navigation bar. $(&#39;.navbar-inverse&#39;).removeClass(&#39;navbar-inverse&#39;).addClass(&#39;navbar-default&#39;);   .</description>
+      <guid>/blogs/blog4/</guid>
+      <description>Analysing the IMDB Dataset   Now that we know our alcohol, we will now take a look at what bonds people even closer together - movies!!! In order to know about all the possible popular and good movies, we thankfully have IMDB, therefore, we will be using the IMDB 5000 dataset to perform our analysis.
+Whenever approaching a problem statement, we need to make sure to use the IICE 4 step plan.</description>
     </item>
     
     <item>
-      <title>Magna</title>
-      <link>/blogs/magna/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <title>Trump&#39;s Approval Ratings</title>
+      <link>/blogs/blog2/</link>
+      <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
       
-      <guid>/blogs/magna/</guid>
-      <description>cat_var &amp;lt;- names(train)[which(sapply(train, is.character))] cat_car &amp;lt;- c(cat_var, &amp;#39;BedroomAbvGr&amp;#39;, &amp;#39;HalfBath&amp;#39;, &amp;#39; KitchenAbvGr&amp;#39;,&amp;#39;BsmtFullBath&amp;#39;, &amp;#39;BsmtHalfBath&amp;#39;, &amp;#39;MSSubClass&amp;#39;) numeric_var &amp;lt;- names(train)[which(sapply(train, is.numeric))] Structure of the data The housing data set has 1460 rows and 81 features with the target feature Sale Price.
-dim(train) ## [1] 1460 81 str(train) ## Classes &amp;#39;data.table&amp;#39; and &amp;#39;data.frame&amp;#39;: 1460 obs. of 81 variables: ## $ Id : int 1 2 3 4 5 6 7 8 9 10 ... ## $ MSSubClass : int 60 20 60 70 60 50 20 60 50 190 .</description>
+      <guid>/blogs/blog2/</guid>
+      <description>Trump’s Approval Margins   Objective: The primary objective of this part of the challenge is to clearly find how Trump’s approval ratings fluctuated as a function of time (in weeks) throughout the past 4 years. Dataset Used: Five-Thirty-Eight.com (Trump-Approval Data)
+Part-1: Reproducing the Plot Our end-goal is to be able to reproduce the following plot: Let us begin the project by importing the CSV file containing the data of the approval poll into our document.</description>
+    </item>
+    
+    <item>
+      <title>Trump&#39;s Approval Ratings</title>
+      <link>/blogs/blog3/</link>
+      <pubDate>Tue, 31 Oct 2017 22:26:13 -0500</pubDate>
+      
+      <guid>/blogs/blog3/</guid>
+      <description>Challenge 2: GDP components over time and among countries   Objective: In this challenge, we will look at how does the GDP and its components vary over time, and compare different countries. We will pay special attention to how much each component contributes to that country’s GDP.
+What is the GDP exactly?
+The GDP is the Gross Domestic Product, and its main components are: Personal Consumption (C), Business Investment (I), Government Spending (G), and Net Exports.</description>
     </item>
     
   </channel>

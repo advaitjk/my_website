@@ -1,0 +1,312 @@
+<!DOCTYPE HTML>
+<html>
+
+    <head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<meta name="description" content="DS/ML/BDA Expert">
+	<meta name="author" content="Advait Jayant">
+	<meta name="generator" content="Hugo 0.74.3" />
+	<title>Trump&#39;s Approval Ratings &middot; Portfolio Website for Advait Jayant</title>
+	<!-- Stylesheets -->
+	
+	<link rel="stylesheet" href="/css/main.css"/>
+	
+	
+
+	
+
+	<!-- Custom Fonts -->
+	<link href="/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+	
+	<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	
+
+	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+	<!--[if lt IE 9]>
+	<script src="js/ie/html5shiv.js"></script>
+	<script src="js/ie/html5shiv.jsrespond.min.js"></script>
+	<![endif]-->
+</head>
+
+    <body>
+
+    <!-- Wrapper -->
+        <div id="wrapper">
+
+            <!-- Header -->
+    <header id="header" class="alt">
+        <a href="/" class="logo"><strong>Advait Jayant</strong> <span></span></a>
+        <nav>
+            <a href="#menu">Menu</a>
+        </nav>
+    </header>
+
+<!-- Menu -->
+    <nav id="menu">
+        <ul class="links">
+            
+                <li><a href="/">Home</a></li>
+            
+
+        </ul>
+        <ul class="actions vertical">
+            
+                <li><a href="/blogs" class="button special fit">Get Started</a></li>
+            
+            
+        </ul>
+    </nav>
+
+        <!-- Main -->
+            <div id="main" class="alt">
+
+                
+                    <section id="one">
+                        <div class="inner">
+                            <header class="major">
+                                <h1>Trump&#39;s Approval Ratings</h1>
+                            </header>
+                            
+                                <span class="image main"><img src="/img/blogs/pic02.jpg" alt="" /></span>
+                            
+                            
+
+
+<div id="trumps-approval-margins" class="section level1">
+<h1>Trump’s Approval Margins</h1>
+<center>
+<img src="https://d.newsweek.com/en/full/607858/adsgads.jpg">
+</center>
+<p>Objective: The primary objective of this part of the challenge is to clearly find how Trump’s approval ratings fluctuated as a function of time (in weeks) throughout the past 4 years.
+Dataset Used: Five-Thirty-Eight.com (Trump-Approval Data)</p>
+<div id="part-1-reproducing-the-plot" class="section level2">
+<h2>Part-1: Reproducing the Plot</h2>
+<p>Our end-goal is to be able to reproduce the following plot:
+<img src="/Users/advaitjayant/Downloads/OneDrive%20-%20LBS/Applied%20Statistics/github%20project%203/my_website/images/trump_approval_margin.png" width="100%" /></p>
+<p>Let us begin the project by importing the CSV file containing the data of the approval poll into our document.</p>
+<pre class="r"><code># Importing the Approval Rating into a DataFrame
+approval_polllist &lt;- vroom::vroom(here::here(&#39;data&#39;, &#39;approval_polllist.csv&#39;))</code></pre>
+<pre><code>## Rows: 14,533
+## Columns: 22
+## Delimiter: &quot;,&quot;
+## chr [12]: president, subgroup, modeldate, startdate, enddate, pollster, grade, population,...
+## dbl [ 9]: samplesize, weight, influence, approve, disapprove, adjusted_approve, adjusted_d...
+## lgl [ 1]: tracking
+## 
+## Use `spec()` to retrieve the guessed column specification
+## Pass a specification to the `col_types` argument to quiet this message</code></pre>
+<pre class="r"><code>glimpse(approval_polllist)</code></pre>
+<pre><code>## Rows: 14,533
+## Columns: 22
+## $ president           &lt;chr&gt; &quot;Donald Trump&quot;, &quot;Donald Trump&quot;, &quot;Donald Trump&quot;, &quot;…
+## $ subgroup            &lt;chr&gt; &quot;All polls&quot;, &quot;All polls&quot;, &quot;All polls&quot;, &quot;All polls…
+## $ modeldate           &lt;chr&gt; &quot;8/29/2020&quot;, &quot;8/29/2020&quot;, &quot;8/29/2020&quot;, &quot;8/29/2020…
+## $ startdate           &lt;chr&gt; &quot;1/20/2017&quot;, &quot;1/20/2017&quot;, &quot;1/20/2017&quot;, &quot;1/21/2017…
+## $ enddate             &lt;chr&gt; &quot;1/22/2017&quot;, &quot;1/22/2017&quot;, &quot;1/24/2017&quot;, &quot;1/23/2017…
+## $ pollster            &lt;chr&gt; &quot;Gallup&quot;, &quot;Morning Consult&quot;, &quot;Ipsos&quot;, &quot;Gallup&quot;, &quot;…
+## $ grade               &lt;chr&gt; &quot;B&quot;, &quot;B/C&quot;, &quot;B-&quot;, &quot;B&quot;, &quot;B&quot;, &quot;C+&quot;, &quot;B-&quot;, &quot;B+&quot;, &quot;B&quot;…
+## $ samplesize          &lt;dbl&gt; 1500, 1992, 1632, 1500, 1500, 1500, 1651, 1190, 2…
+## $ population          &lt;chr&gt; &quot;a&quot;, &quot;rv&quot;, &quot;a&quot;, &quot;a&quot;, &quot;a&quot;, &quot;lv&quot;, &quot;a&quot;, &quot;rv&quot;, &quot;a&quot;, &quot;…
+## $ weight              &lt;dbl&gt; 0.2623230, 0.6800286, 0.1534812, 0.2428446, 0.227…
+## $ influence           &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ approve             &lt;dbl&gt; 45.0, 46.0, 42.1, 45.0, 46.0, 57.0, 42.3, 36.0, 4…
+## $ disapprove          &lt;dbl&gt; 45.0, 37.0, 45.2, 46.0, 45.0, 43.0, 45.8, 44.0, 3…
+## $ adjusted_approve    &lt;dbl&gt; 45.76564, 45.25344, 43.19663, 45.76564, 46.76564,…
+## $ adjusted_disapprove &lt;dbl&gt; 43.59024, 37.81295, 43.85560, 44.59024, 43.59024,…
+## $ multiversions       &lt;chr&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+## $ tracking            &lt;lgl&gt; TRUE, NA, TRUE, TRUE, TRUE, TRUE, TRUE, NA, NA, T…
+## $ url                 &lt;chr&gt; &quot;http://www.gallup.com/poll/201617/gallup-daily-t…
+## $ poll_id             &lt;dbl&gt; 49253, 49249, 49426, 49262, 49236, 49266, 49425, …
+## $ question_id         &lt;dbl&gt; 77265, 77261, 77599, 77274, 77248, 77278, 77598, …
+## $ createddate         &lt;chr&gt; &quot;1/23/2017&quot;, &quot;1/23/2017&quot;, &quot;3/1/2017&quot;, &quot;1/24/2017&quot;…
+## $ timestamp           &lt;chr&gt; &quot;13:38:37 29 Aug 2020&quot;, &quot;13:38:37 29 Aug 2020&quot;, &quot;…</code></pre>
+<div id="data-wrangling" class="section level3">
+<h3>Data Wrangling</h3>
+<p>As Data Scientists, it is our aim and mission to make sure that we follow all the Tidy Data protocols and handle clean data in our approach.</p>
+<pre class="r"><code>tidy_approvals &lt;- approval_polllist %&gt;% 
+  # Filtering out all of the voters in the dataset
+  filter(subgroup %in% &quot;Voters&quot;) %&gt;% 
+  # Selecting all of the necessary attributes; 
+  # We will use the poll_id attribute to check for duplicates
+  select(enddate, approve, disapprove, poll_id) 
+
+# Checking for duplicates and missing entries
+any(duplicated(tidy_approvals))</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>We seem to have dealt with all of the duplicates in our dataset at this point. Let us take a look at our dataframe and check for missing values.</p>
+<pre class="r"><code>any(is.na(tidy_approvals))</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>Let us now glimpse into the dataframe.</p>
+<pre class="r"><code>glimpse(tidy_approvals)</code></pre>
+<pre><code>## Rows: 4,783
+## Columns: 4
+## $ enddate    &lt;chr&gt; &quot;1/22/2017&quot;, &quot;1/24/2017&quot;, &quot;1/25/2017&quot;, &quot;1/25/2017&quot;, &quot;1/24/…
+## $ approve    &lt;dbl&gt; 46.0, 45.2, 42.6, 36.0, 57.0, 43.0, 44.0, 59.0, 41.3, 45.1…
+## $ disapprove &lt;dbl&gt; 37.0, 44.3, 47.8, 44.0, 43.0, 39.0, 44.0, 41.0, 48.5, 46.9…
+## $ poll_id    &lt;dbl&gt; 49249, 49426, 49425, 49260, 49266, 49254, 49237, 49247, 49…</code></pre>
+<p>Now that we can see that there are no missing values or duplicates in our dataset; we can now perform data transformations to sort the data by data and group the data by week and year in order to extract the confidence intervals!</p>
+<pre class="r"><code>grouped_approvals &lt;- tidy_approvals %&gt;% 
+  # We need to extract the year and week numbers from the data
+  mutate(date = mdy(enddate), 
+         weeknr = week(date), 
+         yearnr = year(date)) %&gt;%
+  
+  # Now we will group the data by week number and year number
+  group_by(weeknr, yearnr) %&gt;%
+  
+  # The next step is to summarise the average net approval ratings, standard deviation, 
+  # count, and t-critical values
+  summarise(avg_net_apr = mean(approve - disapprove), 
+            std = sd(approve - disapprove), 
+            count = n(), 
+            t_crit = qt(.975, count-1)) %&gt;% 
+  # We will create a Standard Error attribute using the formula 
+  #(Standard Error = Standard Deviation/Square-root(Count))
+  
+  mutate(se = std / sqrt(count)) %&gt;% 
+  
+  # Now, we will calculate the bounds of the confidence interval
+  mutate(upper = avg_net_apr + t_crit*se,
+          lower = avg_net_apr - t_crit*se) </code></pre>
+<pre><code>## `summarise()` regrouping output by &#39;weeknr&#39; (override with `.groups` argument)</code></pre>
+<pre class="r"><code>grouped_approvals</code></pre>
+<pre><code>## # A tibble: 191 x 9
+## # Groups:   weeknr [53]
+##    weeknr yearnr avg_net_apr   std count t_crit    se  upper  lower
+##     &lt;dbl&gt;  &lt;dbl&gt;       &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt;  &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+##  1      1   2018      -10.7   2.09    20   2.09 0.466  -9.69 -11.6 
+##  2      1   2019      -10.0   3.95    27   2.06 0.760  -8.44 -11.6 
+##  3      1   2020       -8.57  4.65    14   2.16 1.24   -5.88 -11.3 
+##  4      2   2018      -11.5   3.61    26   2.06 0.708 -10.1  -13.0 
+##  5      2   2019      -11.2   2.23    33   2.04 0.389 -10.4  -12.0 
+##  6      2   2020       -7.8   4.27    20   2.09 0.956  -5.80  -9.80
+##  7      3   2018      -12.1   4.57    33   2.04 0.795 -10.5  -13.7 
+##  8      3   2019      -12.9   2.16    38   2.03 0.351 -12.2  -13.6 
+##  9      3   2020       -7.52  6.11    21   2.09 1.33   -4.74 -10.3 
+## 10      4   2017        3.26  8.11    13   2.18 2.25    8.17  -1.64
+## # … with 181 more rows</code></pre>
+</div>
+<div id="constructing-the-plot" class="section level3">
+<h3>Constructing the Plot</h3>
+<pre class="r"><code>grouped_approvals %&gt;%
+  ggplot(aes(weeknr, avg_net_apr))+
+  # We will facet wrap the plot by year
+  facet_wrap(~yearnr)+
+  # We will now add a line according to the points and color the plot by yearnr
+  geom_path(aes(color = factor(yearnr))) + geom_point(aes(color = factor(yearnr)), size = 0.85) +
+  # Displaying the confidence interval
+  geom_ribbon(aes(ymin = lower, ymax = upper, fill = factor(yearnr), color = factor(yearnr)), alpha = 0.1)+ 
+  # We will create the orange horizontal line with the y-intercept = 0
+  geom_hline(yintercept=0, color = &quot;orange&quot;)+
+  # Scaling the two axis
+                     # We will add a border around the plots
+  scale_x_continuous(expand = expansion(mult = .07), 
+                     # Let us now construct the breaks on the x-axis
+                     breaks=seq(0,52,13)) + 
+  # Similarly, we want 12 breaks on the y-axis
+  scale_y_continuous(breaks = breaks_extended(n=12)) + 
+  # We will use the black and white theme
+  theme_bw() + 
+  # We will add a black border around the plots
+  theme(aspect.ratio = 1/3, legend.position = &quot;none&quot;) + 
+  # Labelling the plot exactly as it is in the image
+  labs(x = &quot;Week of the year&quot;, 
+       y = &quot;Averge Net Approval (%)&quot;, 
+       title = &quot;Trump&#39;s popularity remained steadily below 50% throughout his term&quot;, 
+       subtitle = &quot;Estimated Net Approval (approve-disapprove) for Donald Trump&quot;)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/fun_plot-1.png" width="100%" /></p>
+<p>What the plot should have actually looked like:
+<img src="/Users/advaitjayant/Downloads/OneDrive%20-%20LBS/Applied%20Statistics/github%20project%203/my_website/images/trump_approval_margin.png" width="100%" /></p>
+<p>The two plots are nearly almost identical, however, it is easy to observe that there exists a clear differnce in the confidence interval. In the plot that we have to reproduce, the confidence interval was obtained by a multiplication of 1.96, but we think that using the t-critical value may be a better approach to solving this problem.</p>
+<p>In the plot, we can created, we can easily visualise that in 2017, Trump’s approval rating declined quite rapidly!! However, since then Trump has managed to retain his approval ratings of around 40% without having too much trouble.
+In 2020, we can see that the early weeks clearly demonstrate that his approval ratings started to decline, probably because of the Coronavirus crisis and the way he handled it. The rise of the BLM movement may also have played a role in the decline in approval ratings. We have a feeling that it was actually a combination of the lockdowns imposed in the US and the BLM movement that led to this decline in approval ratings. However, it seems that as the 2020 presidential election grows closer, Trump’s rating has started to go back on the rise! Let’s see if he truly does come out as a victor in this political championship again.
+Let us now try to compare the confidence intervals.</p>
+</div>
+<div id="comparing-the-confidence-intervals" class="section level3">
+<h3>Comparing the Confidence Intervals</h3>
+<p>Our next objective is to compare the confidence intervals for weeks 15 (6-12 April 2020) and 34 (17-23 August 2020).</p>
+<pre class="r"><code>grouped_approvals %&gt;% 
+  filter(weeknr == 15, yearnr == 2020) %&gt;% 
+  select(lower, upper)</code></pre>
+<pre><code>## Adding missing grouping variables: `weeknr`</code></pre>
+<pre><code>## # A tibble: 1 x 3
+## # Groups:   weeknr [1]
+##   weeknr lower upper
+##    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     15 -8.92 -6.78</code></pre>
+<pre class="r"><code>grouped_approvals %&gt;% 
+  filter(weeknr == 34, yearnr == 2020) %&gt;% 
+  select(lower, upper)</code></pre>
+<pre><code>## Adding missing grouping variables: `weeknr`</code></pre>
+<pre><code>## # A tibble: 1 x 3
+## # Groups:   weeknr [1]
+##   weeknr lower upper
+##    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     34 -12.3 -5.83</code></pre>
+<p>We can clearly see that the confidence intervals for the two weeks are quite different in the sense that the confidence interval for week 34 is far higher than for week 15. The difference may have arisen from the difference in standard deviations: the standard deviation for week 15 is considerably lesser than that for week 34. The other reason is probably because of the higher sample size. As the sample size increases, the deviation from the central tendency tends to decrease and therefore, this leads to smaller confidence intervals.</p>
+<p>Voila! Now, we have replicated the plot that depicts the top 10 cities that contributed to each of the two candidates. This task was pretty challenging because it can get a little annoying to exactly duplicate the styling… but the end result looks great! :)</p>
+</div>
+</div>
+</div>
+
+                        </div>
+                    </section>
+            <!-- Disqus Inject -->
+                
+            </div>
+            
+        <!-- Footer -->
+            
+                <!-- Footer -->
+    <footer id="footer">
+        <div class="inner">
+            <ul class="icons">
+                
+                    <li><a href="https://www.twitter.com" class="icon alt fa-twitter" target="_blank"><span class="label">Twitter</span></a></li>
+                
+                    <li><a href="https://www.facebook.com/advait97" class="icon alt fa-facebook" target="_blank"><span class="label">Facebook</span></a></li>
+                
+                    <li><a href="https://www.instagram.com/lionesquex" class="icon alt fa-instagram" target="_blank"><span class="label">Instagram</span></a></li>
+                
+                    <li><a href="https://github.com/advaitjk" class="icon alt fa-github" target="_blank"><span class="label">GitHub</span></a></li>
+                
+                    <li><a href="https://www.linkedin.com/in/advait-jayant-21b465bb" class="icon alt fa-linkedin" target="_blank"><span class="label">LinkedIn</span></a></li>
+                
+            </ul>
+            <ul class="copyright">
+                <li>&copy; LEOCRAFT MARKETING PRIVATE LIMITED</li>
+                
+                <li>Design:  <a href="https://www.html5up.net">HTML5 UP</a></li>
+                
+            </ul>
+        </div>
+    </footer>
+
+            
+        </div>
+
+    <!-- Scripts -->
+        <!-- Scripts -->
+    <!-- jQuery -->
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/jquery.scrolly.min.js"></script>
+    <script src="/js/jquery.scrollex.min.js"></script>
+    <script src="/js/skel.min.js"></script>
+    <script src="/js/util.js"></script>
+
+    
+
+    <!-- Main JS -->
+    <script src="/js/main.js"></script>
+
+    
+
+    
+
+    </body>
+</html>

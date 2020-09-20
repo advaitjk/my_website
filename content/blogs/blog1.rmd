@@ -1,22 +1,25 @@
 ---
+title: "House Price Prediction"
+date: '2017-10-31T22:26:13-05:00'
+description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna
+  sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa
+  sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem
+  consequat tincidunt. Vivamus et sagittis tempus.
+draft: no
+image: pic01.jpg
+keywords: ''
+slug: blog1
 categories:
-- ""
-- ""
-date: "2017-10-31T22:26:13-05:00"
-description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem consequat tincidunt. Vivamus et sagittis tempus.
-draft: false
-image: pic08.jpg
-keywords: ""
-slug: aliquam
-title: House Price Prediction
+- ''
+- ''
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-#Executive Summary
+# Executive Summary
 
-#Introduction
+# Introduction
 
 The Ames Housing dataset was compiled by Dean De Cock for use in data science education. It's an incredible alternative for data scientists looking for a modernized and expanded version of the often cited Boston Housing dataset. Let's say that we are looking to buy a house in Ames, Iowa, and we want to find the best possible house for our price range, so we are going to use different supervised machine learning techniques to actually find how much this property will set us back! 
 
@@ -53,7 +56,7 @@ train <- read.csv("train.csv", stringsAsFactors = F)
 test <- read.csv("test.csv", stringsAsFactors = F)
 ```
 
-##Data size and structure
+## Data size and structure
 
 The train dataset consist of character and integer variables. Most of the character variables are actually (ordinal) factors, but I chose to read them into R as character strings as most of them require cleaning and/or feature engineering first. 
 
@@ -77,9 +80,9 @@ dim(all)
 
 Without the Id's, the dataframe consists of 79 predictors and our response variable SalePrice.
 
-#Exploring some of the most important variables
+# Exploring some of the most important variables
 
-##The response variable; SalePrice
+## The response variable; SalePrice
 
 As you can see, the sale prices are right skewed. This was expected as few people can afford very expensive houses. I will keep this in mind, and take measures before modeling.
 
@@ -94,11 +97,11 @@ summary(all$SalePrice)
 ```
 
 
-##The most important numeric predictors
+## The most important numeric predictors
 
 The character variables need some work before I can use them. To get a feel for the dataset, I decided to first see which numeric variables have a high correlation with the SalePrice.
 
-###Correlations with SalePrice
+### Correlations with SalePrice
 
 Altogether, there are 10 numeric variables with a correlation of at least 0.5 with SalePrice. All those correlations are positive.
 
@@ -130,7 +133,7 @@ It also becomes clear the multicollinearity is an issue. For example: the correl
 -YearRemodAdd: Remodel date (same as construction date if no remodeling or additions)
 
 
-###Overall Quality
+### Overall Quality
 
 Overall Quality has the highest correlation with SalePrice among the numeric variables (0.79). It rates the overall material and finish of the house on a scale from 1 (very poor) to 10 (very excellent).
 
@@ -142,7 +145,7 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice)
 
 The positive correlation is certainly there indeed, and seems to be a slightly upward curve. Regarding outliers, I do not see any extreme values. If there is a candidate to take out as an outlier later on, it seems to be the expensive house with grade 4.
 
-###Above Grade (Ground) Living Area (square feet)
+### Above Grade (Ground) Living Area (square feet)
 
 The numeric variable with the second highest correlation with SalesPrice is the Above Grade Living Area. This make a lot of sense; big houses are generally more expensive.
 
@@ -162,7 +165,7 @@ all[c(524, 1299), c('SalePrice', 'GrLivArea', 'OverallQual')]
 
 #Missing data, label encoding, and factorizing variables
 
-##Completeness of the data
+## Completeness of the data
 
 First of all, I would like to see which variables contain missing values.
 
@@ -174,7 +177,7 @@ cat('There are', length(NAcol), 'columns with missing values')
 
 Of course, the 1459 NAs in SalePrice match the size of the test set perfectly. This means that I have to fix NAs in 34 predictor variables.
 
-##Imputing missing data {.tabset}
+## Imputing missing data {.tabset}
 
 In this section, I am going to fix the 34 predictors that contains missing values. I will go through them working my way down from most NAs until I have fixed them all. If I stumble upon a variable that actually forms a group with other variables, I will also deal with them as a group. For instance, there are multiple variables that relate to Pool, Garage, and Basement.
 
@@ -182,7 +185,7 @@ As I want to keep the document as readable as possible, I decided to use the "Ta
 
 Besides making sure that the NAs are taken care off, I have also converted character variables into ordinal integers if there is clear ordinality, or into factors if levels are categories without ordinality. I will convert these factors into numeric later on by using one-hot encoding (using the model.matrix function).
 
-###Pool variables
+### Pool variables
 
 **Pool Quality and the PoolArea variable**
 
@@ -228,7 +231,7 @@ all$PoolQC[2600] <- 2
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Miscellaneous Feature
+### Miscellaneous Feature
 
 **Miscellaneous feature not covered in other categories**
 
@@ -257,7 +260,7 @@ When looking at the frequencies, the variable seems irrelevant to me. Having a s
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Alley
+### Alley
 
 **Type of alley access to property**
 
@@ -280,7 +283,7 @@ table(all$Alley)
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Fence
+### Fence
 
 **Fence quality**
 
@@ -306,7 +309,7 @@ all$Fence <- as.factor(all$Fence)
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Fireplace variables
+### Fireplace variables
 
 **Fireplace quality, and Number of fireplaces**
 
@@ -401,7 +404,7 @@ sum(table(all$LotConfig))
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Garage variables
+### Garage variables
 
 **Altogether, there are 7 variables related to garages**
 
@@ -521,8 +524,8 @@ table(all$GarageCond)
 ```
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-###Basement Variables
+ 
+### Basement Variables
 
 **Altogether, there are 11 variables that relate to the Basement of a house**
 
@@ -697,7 +700,7 @@ all$TotalBsmtSF[is.na(all$TotalBsmtSF)] <-0
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Masonry variables
+### Masonry variables
 
 **Masonry veneer type, and masonry veneer area**
 
@@ -752,7 +755,7 @@ all$MasVnrArea[is.na(all$MasVnrArea)] <-0
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###MS Zoning
+### MS Zoning
 
 **MSZoning: Identifies the general zoning classification of the sale**
 
@@ -777,7 +780,7 @@ sum(table(all$MSZoning))
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Kitchen variables
+### Kitchen variables
 
 **Kitchen quality and numer of Kitchens above grade**
 
@@ -810,7 +813,7 @@ sum(table(all$KitchenAbvGr))
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Utilities
+### Utilities
 
 **Utilities: Type of utilities available**
 
@@ -831,7 +834,7 @@ all$Utilities <- NULL
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Home functionality
+### Home functionality
 
 **Functional: Home functionality**
 
@@ -858,7 +861,7 @@ sum(table(all$Functional))
 
 **Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-###Exterior variables
+### Exterior variables
 
 **There are 4 exterior variables**
 
@@ -982,7 +985,7 @@ table(all$Electrical)
 sum(table(all$Electrical))
 ```
 
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
+** Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
 ###Sale Type and Condition
 
@@ -1039,7 +1042,7 @@ Charcol
 cat('There are', length(Charcol), 'remaining columns with character values')
 ```
 
-###Foundation
+### Foundation
 
 **Foundation: Type of foundation**
 
@@ -1059,7 +1062,7 @@ sum(table(all$Foundation))
 
 **Please return to the 5.3 Tabs menu to select other (groups of) variables**
 
-###Heating and airco
+### Heating and airco
 
 There are 2 heating variables, and one that indicates Airco Yes/No.
 
@@ -1180,7 +1183,7 @@ sum(table(all$LandSlope))
 
 **Please return to the 5.3 Tabs menu to select other (groups of) variables**
 
-###Dwelling
+### Dwelling
 
 2 variables that specify the type and style of dwelling.
 
@@ -1311,7 +1314,7 @@ sum(table(all$Condition2))
 
 **Please return to the 5.3 Tabs menu to select other (groups of) variables**
 
-###Pavement of Street & Driveway
+### Pavement of Street & Driveway
 
 2 variables
        
@@ -1342,11 +1345,11 @@ sum(table(all$PavedDrive))
 
 **Please return to the 5.3 Tabs menu to select other (groups of) variables**
 
-##Changing some numeric variables into factors
+## Changing some numeric variables into factors
 
 At this point, all variables are complete (No NAs), and all character variables are converted into either numeric labels of into factors. However, there are 3 variables that are recorded numeric but should actually be categorical.
 
-###Year and Month Sold
+### Year and Month Sold
 
 While oridinality within YearBuilt (or remodeled) makes sense (old houses are worth less), we are talking about only 5 years of sales. These years also include an economic crisis. For instance: Sale Prices in 2009 (after the collapse) are very likely to be much lower than in 2007. I wil convert YrSold into a factor before modeling, but as I need the numeric version of YrSold to create an Age variable, I am not doing that yet.
 
@@ -1378,7 +1381,7 @@ ms <- ggplot(all[!is.na(all$SalePrice),], aes(x=MoSold, y=SalePrice)) +
 grid.arrange(ys, ms, widths=c(1,2))
 ```
 
-###MSSubClass
+### MSSubClass
 
 MSSubClass: Identifies the type of dwelling involved in the sale.	
 
@@ -1412,7 +1415,7 @@ all$MSSubClass<-revalue(all$MSSubClass, c('20'='1 story 1946+', '30'='1 story 19
 str(all$MSSubClass)
 ```
 
-#Visualization of important variables
+# Visualization of important variables
 
 I have now finally reached the point where all character variables have been converted into categorical factors or have been label encoded into numbers. In addition, 3 numeric variables have been converted into factors, and I deleted one variable (Utilities). As you can see below, the number of numerical variables is now 56 (including the response variable), and the remaining 23 variables are categorical.
 
@@ -1439,7 +1442,7 @@ cor_numVar <- cor_numVar[CorHigh, CorHigh]
 corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt", tl.cex = 0.7,cl.cex = .7, number.cex=.7)
 ```
 
-##Finding variable importance with a quick Random Forest
+## Finding variable importance with a quick Random Forest
 
 Although the correlations are giving a good overview of the most important numeric variables and multicolinerity among those variables, I wanted to get an overview of the most important variables including the categorical variables before moving on to visualization.
 
@@ -1494,7 +1497,7 @@ cor(all$GrLivArea, (all$X1stFlrSF + all$X2ndFlrSF + all$LowQualFinSF))
 head(all[all$LowQualFinSF>0, c('GrLivArea', 'X1stFlrSF', 'X2ndFlrSF', 'LowQualFinSF')])
 ```
 
-###The most important categorical variable; Neighborhood
+### The most important categorical variable; Neighborhood
 
 Th first graph shows the median SalePrice by Neighorhood. The frequency (number of houses) of each Neighborhood in the train set is shown in the labels.
 
@@ -1514,7 +1517,7 @@ n2 <- ggplot(data=all, aes(x=Neighborhood)) +
 grid.arrange(n1, n2)
 ```
 
-###Overall Quality, and other Quality variables
+### Overall Quality, and other Quality variables
 
 I have already visualized the relation between Overall Quality and SalePrice in my initial explorations, but I want to visualize the frequency distribution as well. As there are more quality measurements, I am taking the opportunity to bundle them in this section.
 
@@ -1541,7 +1544,7 @@ multiplot(q1, q2, q3, q4, q5, q6, q7, layout=layout)
 
 Overall Quality is very important, and also more granular than the other variables. External Quality is also improtant, but has a high correlation with Overall Quality (0.73). Kitchen Quality also seems one to keep, as all houses have a kitchen and there is a variance with some substance. Garage Quality does not seem to distinguish much, as the majority of garages have Q3. Fireplace Quality is in the list of high correlations, and in the important variables list. The PoolQC is just very sparse (the 13 pools cannot even be seen on this scale). I will look at creating a 'has pool' variable later on.
 
-###The second most important categorical variable; MSSubClass
+### The second most important categorical variable; MSSubClass
 
 The first visualization shows the median SalePrice by MSSubClass. The frequency (number of houses) of each MSSubClass in the train set is shown in the labels.
 
@@ -1594,7 +1597,7 @@ multiplot(g1, g2, g3, g4, g5, g6, g7, layout=layout)
 
 As already mentioned in section 4.2, GarageCars and GarageArea are highly correlated. Here, GarageQual and GarageCond also seem highly correlated, and both are dominated by level =3. 
 
-###Basement variables
+### Basement variables
 
 Similar the garage variables, multiple basement variables are important in the correlations matrix and the Top 20 RF predictors list. However, 11 basement variables seems an overkill. Before I decide what I am going to do with them, I am visualizing 8 of them below. The 2 "Bathroom" variables are dealt with in Feature Engineering (section 7.1), and the "Basement square feet" is already discussed in section 6.2.1.
 
@@ -1625,9 +1628,9 @@ So it seemed as if the Total Basement Surface in square feet (TotalBsmtSF) is fu
 
 Basement Quality is a confusing variable name, as it turns out that it specifically rates the Height of the basement.
 
-#Feature engineering
+# Feature engineering
 
-##Total number of Bathrooms
+## Total number of Bathrooms
 
 There are 4 bathroom variables. Individually, these variables are not very important. However, I assume that I if I add them up into one predictor, this predictor is likely to become a strong one.
 
@@ -1919,16 +1922,16 @@ qqnorm(all$SalePrice)
 qqline(all$SalePrice)
 ```
 
-##Composing train and test sets
+## Composing train and test sets
 
 ```{r}
 train1 <- combined[!is.na(all$SalePrice),]
 test1 <- combined[is.na(all$SalePrice),]
 ```
 
-#Modeling
+# Modeling
 
-##Lasso regression model
+## Lasso Regression Model
 
 I have also tried Ridge and Elastic Net models, but since lasso gives the best results of those 3 models I am only keeping the lasso model in the document.
 
@@ -1968,7 +1971,7 @@ predictions_lasso <- exp(LassoPred) #need to reverse the log to the real values
 head(predictions_lasso)
 ```
 
-##XGBoost model
+## XGBoost model
 
 Initially, I just worked with the XGBoost package directly. The main reason for this was that the package uses its own efficient datastructure (xgb.DMatrix). The package also provides a cross validation function. However, this CV function only determines the optimal number of rounds, and does not support a full grid search of hyperparameters.
 
@@ -2050,7 +2053,7 @@ mat <- xgb.importance (feature_names = colnames(train1),model = xgb_mod)
 xgb.ggplot.importance(importance_matrix = mat[1:20], rel_to_first = TRUE)
 ```
 
-##Averaging predictions
+## Averaging predictions
 
 Since the lasso and XGBoost algorithms are very different, averaging predictions likely improves the scores. As the lasso model does better regarding the cross validated RMSE score (0.1121 versus 0.1162), I am weigting the lasso model double.
 

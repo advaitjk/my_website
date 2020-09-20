@@ -51,13 +51,13 @@ disqusShortname = ""
 #     name = "Real-World Experience"
 #      url = "blogs"
 
-    [[params.navigation.links]]
-      name = "Real-World Projects"
-      url = "projects"
+#    [[params.navigation.links]]
+#      name = "Real-World Projects"
+#      url = "projects"
 
-    [[params.navigation.links]]
-      name = "Resume"
-      url = "resume"
+#    [[params.navigation.links]]
+#      name = "Resume"
+#      url = "resume"
 
     # Add custom links here by uncommenting code below. To remove links just delete
     # the [[params.navigation.links]] map associated with that link. Copy and paste
@@ -71,10 +71,10 @@ disqusShortname = ""
       name = "Get Started"
       url = "blogs"
 
-    # Button Style 2
-    [[params.navigation.button2]]
-      name = "Log In"
-      url = "#"
+#    # Button Style 2
+#   [[params.navigation.button2]]
+#      name = "Log In"
+#      url = "#"
 
 
   # Banner section
@@ -95,37 +95,37 @@ disqusShortname = ""
       title = "Housing Prices Prediction Challenge"
       subtitle = "Ames Housing Dataset"
       image = "pic01.jpg"
-      url = "blogs/aliquam"
+      url = "blogs/blog1"
 
     [[params.tiles.showcase]]
-      title = "Tempus"
-      subtitle = "Feugiat Amet Tempus"
+      title = "Trump's Approval Rating"
+      subtitle = "It izzz what it izzzz"
       image = "pic02.jpg"
-      url = "blogs/tempus"
+      url = "blogs/blog2"
 
     [[params.tiles.showcase]]
-      title = "Magna"
-      subtitle = "Lorem Etiam Nullam"
+      title = "Understanding what makes up the GDP "
+      subtitle = "How is the GDP Calculated?"
       image = "pic03.jpg"
-      url = "blogs/magna"
+      url = "blogs/blog3"
 
     [[params.tiles.showcase]]
-      title = "Ipsum"
-      subtitle = "Nisl Sed Aliquam"
+      title = "Netflix and Chill"
+      subtitle = "A look at the IMDB 500 Dataset"
       image = "pic04.jpg"
-      url = "blogs/ipsum"
+      url = "blogs/blog4"
 
-    [[params.tiles.showcase]]
-      title = "Consequat"
-      subtitle = "Ipsum Dolor Sit Amet"
-      image = "pic05.jpg"
-      url = "blogs/ipsum"
+ #   [[params.tiles.showcase]]
+ #     title = "Consequat"
+ #     subtitle = "Ipsum Dolor Sit Amet"
+ #     image = "pic05.jpg"
+ #     url = "blogs/ipsum"
 
-    [[params.tiles.showcase]]
-      title = "Etiam"
-      subtitle = "Feugiat Amet Tempus"
-      image = "pic06.jpg"
-      url = "blogs/ipsum"
+ #   [[params.tiles.showcase]]
+#      title = "Etiam"
+ #     subtitle = "Feugiat Amet Tempus"
+ #     image = "pic06.jpg"
+ #     url = "blogs/ipsum"
     # You can make more showcases by copy and pasting the code above
 
   [params.blog]
