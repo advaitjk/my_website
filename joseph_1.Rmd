@@ -1,0 +1,378 @@
+---
+title: "joseph_cleaned"
+output: html_document
+---
+---
+title: "GA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Airbnb Munich Price Prediction
+
+Let's imagine that we are going on holiday to Munich; but before we actually get there, we want to make sure that we have the best home for holidaying with our partners. After all, we want to make sure that we impress our partners right? We are going to go there for 4 days and 4 nights, and since it's going to be a romantic vacation, we hope that there are only two people. In order to be able to find the best properties and predict their prices, we are going to begin by loading our dataset. 
+
+``` {r, include = FALSE}
+# Including all of the libraries that we are going to be using  
+#install.packages("hrbrthemes")
+#install.packages("cowplot")
+#install.packages("highcharter")
+#install.packages("leaflet")
+#install.packages("plotly")
+#install.packages("DT")
+#install.packages("shiny")
+#install.packages("Ggally")
+#install.packages("glue")
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(here)
+library(skimr)
+library(janitor)
+library(httr)
+library(readxl)
+library(vroom)
+library(infer)
+library(ggplot2)
+library(dplyr)
+#library(hrbrthemes)
+library(cowplot)
+library(highcharter)
+library(leaflet)
+library(plotly)
+library(DT)
+library(shiny)
+library(GGally)
+library(glue)
+library(kableExtra)
+library(ggridges)
+```
+
+``` {r}
+# Loading the listings dataframe for Munich
+listings <- vroom("http://data.insideairbnb.com/germany/bv/munich/2020-06-20/data/listings.csv.gz") %>% 
+    clean_names()
+```
+
+``` {r}
+# Skimming the listings
+skim(listings)
+```
+
+From a simple skim of our listings attribute, we can clearly see that there are 11172 rows, or observations, in our dataset. There are 106 columns to begin with, which means that we are dealing with 106 attributes. These are waaaaayyyy too many attributes for our analysis so we will need to make sure that our entire dataset is super clean before we begin solving our regression problem. 
+
+``` {r}
+# Creating a beautiful table to show the count of character, date, logical, and numeric variables. 
+table(sapply(listings, class))
+```
+
+In our table, we can clearly see that there are 45 character variables, 5 Date variables, 16 logical variables, and 40 numeric variables. 
+
+``` {r}
+# Glimpsing into the listings dataframe
+glimpse(listings)
+```
+
+There are some variables that are currently characters but should definitely be factor variables, there are host_response_time, host_is_superhost, host_identity_verified, neighbourhood_cleansed, is_location_exact, property_type, room_type, bed_type, calendar_updated, instant_bookable, and cancellation_policy.
+
+
+``` {r}
+# Taking a look at the head of the listings dataframe
+head(listings)
+```
+107 columns are far too many to work with. So, now let's take a look at the summary statistics of the price attribute in the listings dataframe. 
+
+``` {r}
+# Using favstats to display our favourite statistics 
+favstats(listings$price)
+```
+
+We can see that the minimum price is 0 (not optimal), median price is 82, mean price is 113.17, and there are 28 observations that are missing the price attribute. We will need to clean the price attribute in the process of our analysis. 
+
+``` {r}
+# Checking for dimensions 
+dim(listings)
+```
+
+In our dataset the column price is non numeric and we have $ symbol appended to all prices. So we have to remove the symbol and change the datatype for visualization. 
+
+``` {r}
+### 1
+typeof(listings$price)
+listings$price <- sub("\\$","",listings$price)
+listings$price <- as.numeric(listings$price)
+typeof(listings$price)
+
+### 2
+listings$extra_people <- sub("\\$","",listings$extra_people)
+listings$extra_people <- as.numeric(listings$extra_people)
+
+### 3
+listings$cleaning_fee <- sub("\\$","",listings$cleaning_fee)
+listings$cleaning_fee <- as.numeric(listings$cleaning_fee)
+typeof(listings$cleaning_fee)
+```
+
+Let us now visualise the missing data in our dataset. 
+
+``` {r fig.width = 10, fig.height = 10}
+th <- theme_fivethirtyeight() + theme(axis.title = element_text(), axis.title.x = element_text()) # global theme for ggplot2 objects
+
+missing_airbnb <- listings %>% summarise_all(~(sum(is.na(.))/n()))
+missing_airbnb <- gather(missing_airbnb, key = "variables", value = "percent_missing")
+missing_airbnb <- missing_airbnb[missing_airbnb$percent_missing > 0.0, ] 
+
+ggplot(missing_airbnb, aes(x = reorder(variables, percent_missing), y = percent_missing)) +
+geom_bar(stat = "identity", fill = "red", aes(color = I('white')), size = 0.3)+
+xlab('variables')+
+coord_flip() + 
+th  +
+  ggtitle("Missing Data") +
+  xlab("Column name") +
+  ylab("Percentage missing") +
+  annotate("text", x = 1.5, y = 0.1,label = "host_name and name have less than 0.001\n percentage missing", color = "slateblue", size = 5)
+```
+The variables xl_picture_url, thumbnail_url, neighbourhood_group_cleansed, medium_url, license, jurisdiction_names, square_feet, monthly_price, weekly_price, and notes have too many missing values (> 70% missing values). These variables won't prove to be particularly helpful in our analysis. 
+
+The cleaning fee attribute contains several missing values: this basically means that there is no cleaning fee for these properties. 
+
+``` {r}
+listings <- listings %>%
+  mutate(cleaning_fee = case_when(
+    is.na(cleaning_fee) ~ 0, 
+    TRUE ~ cleaning_fee
+  ))
+```
+
+Let us take a look at the property_type attribute. We want to check which properties are frequented most in our analysis.
+
+``` {r}
+listings %>% 
+  count(property_type) %>% 
+  arrange(desc(n))
+
+```
+
+We can see that the most common property types are Apartments, Houses, Condominiums, and service apartments. There are a total of 31 kinds of properties out of which only the first 4 account for a major chunk of them. So, we will select Apartments, Houses, Condominiums, and Serviced Apartments, and then group all the other property types into a single one "Other". We will store this new grouping of properties in our prop_type_simplified attribute. 
+
+Most common property types
+``` {r}
+listings <- listings %>%
+  mutate(prop_type_simplified = case_when(
+    property_type %in% c("Apartment","House", "Condominium","Serviced apartment") ~ property_type, 
+    TRUE ~ "Other"
+  ))
+
+```
+
+Now, let's check if we did this correctly. 
+
+``` {r}
+listings %>%
+  count(property_type, prop_type_simplified) %>%
+  arrange(desc(n))        
+```
+
+We can see that everything is perfect. Now let's look at the minimum nights attribute. 
+
+``` {r}
+listings %>% 
+  count(minimum_nights) %>% 
+  arrange(desc(n))
+```
+The most common value in minimum nights is 1. Among, the most frequent minimum_nights, the most uncanny occurence is 30 minimum nights. We believe that this number probably corresponds to the fact that some properties are only available to rent per month. However, since we are only going for 4 nights, we will filter out those properties that minimum nights <= 4.
+
+``` {r}
+listings <- listings %>% 
+  filter(minimum_nights <= 4)
+dim(listings)
+```
+
+There are a few columns that only contain null values in our dataset. Our next step is cleaning all of those columns from the dataset. 
+
+``` {r null_columns}
+listings_cleaned <- listings
+a<- sapply(listings_cleaned, function(y) sum(length(which(is.na(y)))))
+listings_cleaned <- listings[,colSums(is.na(listings)) < nrow(listings)]
+length(listings_cleaned)
+```
+
+Now that we cleaned all of the Null columns from the dataset, the next step is removing all of the URLs since we won't be needing them. 
+
+``` {r}
+listings_cleaned[,names(listings_cleaned)[grep("url",names(listings_cleaned))]] <- NULL
+length(listings_cleaned)
+```
+
+The host_response_time column still has some NA values that have been listed as N/A and we need to make sure they are formatted into the correct value The host acceptance rate is also in a string but we need to make sure that this is stored in numbers. 
+
+``` {r}
+listings_cleaned$host_response_time <- listings_cleaned$host_response_time %>% 
+                      na_if("N/A")
+listings_cleaned$host_acceptance_rate <- listings_cleaned$host_acceptance_rate %>% 
+                      parse_number()
+```
+
+Deleting columns which have more than 70% null values:
+Though we have deleted columns which have all null values, we still have columns which have more then 70% of the null data in it. As these nulls will affect our analysis we have two options to overcome with these.
+
+i. We can replace all nulls with the median, mean or mode if those columns are necessary.
+
+ii. We can simply delete these columns if they are not necessary.
+
+In our dataset exploration, these columns will not affect the analysis. So here we are choosing the second option to delete these columns.
+
+
+``` {r}
+total <- nrow(listings_cleaned)
+b <-  round(total * 0.7)
+listings_cleaned <- listings_cleaned[,colSums(is.na(listings_cleaned)) < b]
+length(listings_cleaned)
+```
+
+Redundant Columns 
+There might be columns which will provide same information. As this leads to data redundancy we have to delete these columns.
+
+``` {r}
+listings_cleaned[,names(listings_cleaned[(duplicated(t(listings_cleaned)))])] <- NULL
+```
+
+Converting few columns to factor: 
+Using as.factor(), we will convert a few attributes into factors for faster access. 
+
+``` {r}
+listings_cleaned$host_response_time <- as.factor(listings_cleaned$host_response_time)
+listings_cleaned$host_is_superhost <- as.factor(listings_cleaned$host_is_superhost)
+listings_cleaned$host_identity_verified <- as.factor(listings_cleaned$host_identity_verified)
+listings_cleaned$neighbourhood_cleansed <- as.factor(listings_cleaned$neighbourhood_cleansed)
+listings_cleaned$is_location_exact <- as.factor(listings_cleaned$is_location_exact)
+listings_cleaned$property_type <- as.factor(listings_cleaned$property_type)
+listings_cleaned$room_type <- as.factor(listings_cleaned$room_type)
+listings_cleaned$bed_type <- as.factor(listings_cleaned$bed_type)
+listings_cleaned$calendar_updated <- as.factor(listings_cleaned$calendar_updated)
+listings_cleaned$instant_bookable <- as.factor(listings_cleaned$instant_bookable)
+listings_cleaned$cancellation_policy<- as.factor(listings_cleaned$cancellation_policy)
+```
+
+We will drop the columns scrape_id, state, country_code, and country from our listings dataframe because all of the observations in our dataset should have the same value for all of these attributes. 
+
+``` {r}
+unique(listings["scrape_id"])
+unique(listings["state"])
+unique(listings["country_code"])
+unique(listings["country"])
+listings_cleaned[,c( "scrape_id", "state", "country_code", "country")] <- NULL
+```
+
+At this point, we still have far too many attributes so we are just going to select the attributes that we want to keep and store them in the final_listings dataframe. 
+
+``` {r}
+final_listings <- listings_cleaned[, c("price", "cleaning_fee", "extra_people", "property_type", "number_of_reviews", "review_scores_rating","host_response_time", "longitude", "latitude", "neighbourhood", "neighbourhood_cleansed", "host_is_superhost", "host_acceptance_rate", "minimum_nights", "prop_type_simplified", "room_type", "guests_included", "has_availability", "last_review", "availability_365", "amenities", "is_location_exact", "bathrooms", "bedrooms", "cancellation_policy")]
+glimpse(final_listings)
+
+```
+
+Identifying outliers in price column
+To identify the outliers in the price column, we have plotted the distribution of price. In the below plot, we can see that there few houses which have price 0. These erroneous values probably come from the user entering wrong valuesi into the dataset.
+
+``` {r outliers fig_width=15, fig_height = 10}
+
+ggplot(final_listings, aes(price)) +
+  geom_histogram(bins = 30, aes(y = ..density..), fill = "purple") +
+  geom_density(alpha = 0.2, fill = "purple") +
+  th +
+  ggtitle("Distribution of price",
+          subtitle = "The distribution is very skewed") +
+  theme(axis.title = element_text(), axis.title.x = element_text()) +
+  geom_vline(xintercept = round(mean(final_listings$price), 2), size = 2, linetype = 3)
+
+```
+We can clearly see that this plot starts from zero and the distribution is positively skewed. We will remove all of the observations where the value of the price is zero. 
+
+``` {r}
+final_listings <- final_listings %>%  
+  filter(price>0)
+```
+
+Using regular expressions (we will use grep later), we will be creating new logical attributes for tv, wifi, and internet from the amenities attribute. 
+
+``` {r}
+final_listings <- final_listings %>% 
+  # Checking if property has TV/Cable TV
+  mutate(has_tv = str_detect(final_listings$amenities, regex("TV", ignore_case = TRUE))) %>% 
+  # Checkign for WiFi
+  mutate(has_wifi = str_detect(final_listings$amenities, regex("WiFi", ignore_case = TRUE))) %>% 
+  mutate(has_internet = str_detect(final_listings$amenities, regex("Internet", ignore_case = TRUE)))
+```
+
+Now, let's try to use grep to create variables for has_gym incidcating whether there is a gym, has_pool if there is a pool, has_parking if there is a parking, has_private_entrance if there is a private entry, and has_balcony if there is a balcony. 
+
+``` {r}
+final_listings <- final_listings %>% 
+  mutate(has_pool = case_when(
+    grepl("Pool", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    has_gym = case_when(
+    grepl("Gym", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    has_parking = case_when(
+    grepl("Parking", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE), 
+    has_private_entrance = case_when(
+    grepl("Private entrance", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    has_balcony = case_when(
+    grepl("balcony", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+  )
+```
+
+We had three neighbourhood attributes in our listings original dataset: the neighbourhood attribute, the neighbourhood_cleansed attribute and the neighbourhood_groups attribute. The third attribute was unfortunately useless to us since it contained 99.7% missing values and we had to drop it. Now, the neighbourhood attribute and the neighbourhood_cleansed dataset contain too many different kinds of values. What we want to do is use our city knowledge and understanding to group together different neighbourhoods into the same group. Our objective is to create 6 regions from all of these neighbourhoods, the 6 regions that we will create are: Schwabing, Bogenhausen, Haidhausen, Altstadt, Sendling, and Neuhausen-Nymphenburg-Laim.
+
+``` {r regions renamed}
+
+final_listings <- final_listings %>% 
+  mutate(neighbourhood_cleansed= case_when(
+      neighbourhood_cleansed=="Schwabing-Freimann"~"Schwabing",
+      neighbourhood_cleansed=="Schwabing-West"~"Schwabing",
+      neighbourhood_cleansed=="Milbertshofen-Am Hart"~"Schwabing",
+      neighbourhood_cleansed=="Bogenhausen"~"Bogenhausen",
+      neighbourhood_cleansed=="Tudering-Riem"~"Bogenhausen",
+      neighbourhood_cleansed=="Berg am Laim"~"Bogenhausen",
+      neighbourhood_cleansed=="Au-Haidhausen"~"Haidhausen",
+      neighbourhood_cleansed=="Ramersdorf-Perlach"~"Haidhausen",
+      neighbourhood_cleansed=="Obergiesing"~"Haidhausen",
+      neighbourhood_cleansed=="Untergiesing-Harlaching"~"Haidhausen",
+      neighbourhood_cleansed=="Ludwigsvorstadt-Isarvorstadt"~"Altstadt",
+      neighbourhood_cleansed=="Thalkirchen-Obersendling-Forstenried-Fürstenried-Solln"~"Sendling",
+      neighbourhood_cleansed=="Sendling-Westpark"~"Sendling",
+      neighbourhood_cleansed=="Sendling"~"Sendling",
+      neighbourhood_cleansed=="Hadern"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Laim"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Pasing-Obermenzing"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Aubing-Lochhausen-Langwied"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Neuhausen-Nymphenburg"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Moosach"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Feldmoching-Hasenbergl"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Allach-Untermenzing"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Schwanthalerhöhe"~"Altstadt",
+      neighbourhood_cleansed=="Maxvorstadt"~"Altstadt",
+      neighbourhood_cleansed=="Altstadt-Lehel"~"Altstadt"
+      )) 
+
+final_listings
+
+
+final_listings %>%
+   count(neighbourhood_cleansed) %>%
+   arrange(desc(n))
+
+```
+
+Time to start with our EDA! :D 
+
+

@@ -30,15 +30,6 @@
     </item>
     
     <item>
-      <title>Magna</title>
-      <link>/blogs/magna/</link>
-      <pubDate>Tue, 31 Oct 2017 22:26:09 -0500</pubDate>
-      
-      <guid>/blogs/magna/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>Hello R Markdown</title>
       <link>/post/2015-07-23-r-rmarkdown/</link>
       <pubDate>Thu, 23 Jul 2015 21:13:14 -0500</pubDate>
@@ -50,12 +41,22 @@ summary(cars) ## speed dist ## Min. : 4.0 Min. : 2.00 ## 1st Qu.:12.0 1st Qu.: 2
     </item>
     
     <item>
-      <title>zillow-project</title>
-      <link>/blogs/zillow-project/</link>
+      <title>ipsum</title>
+      <link>/blogs/ipsum/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>/blogs/zillow-project/</guid>
-      <description>Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem consequat tincidunt. Vivamus et sagittis tempus.</description>
+      <guid>/blogs/ipsum/</guid>
+      <description>// Inverse color of navigation bar. $(&amp;#39;.navbar-inverse&amp;#39;).removeClass(&amp;#39;navbar-inverse&amp;#39;).addClass(&amp;#39;navbar-default&amp;#39;); // Inverse color of navigation bar. $(&#39;.navbar-inverse&#39;).removeClass(&#39;navbar-inverse&#39;).addClass(&#39;navbar-default&#39;);   .</description>
+    </item>
+    
+    <item>
+      <title>Magna</title>
+      <link>/blogs/magna/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/blogs/magna/</guid>
+      <description>cat_var &amp;lt;- names(train)[which(sapply(train, is.character))] cat_car &amp;lt;- c(cat_var, &amp;#39;BedroomAbvGr&amp;#39;, &amp;#39;HalfBath&amp;#39;, &amp;#39; KitchenAbvGr&amp;#39;,&amp;#39;BsmtFullBath&amp;#39;, &amp;#39;BsmtHalfBath&amp;#39;, &amp;#39;MSSubClass&amp;#39;) numeric_var &amp;lt;- names(train)[which(sapply(train, is.numeric))] Structure of the data The housing data set has 1460 rows and 81 features with the target feature Sale Price.
+dim(train) ## [1] 1460 81 str(train) ## Classes &amp;#39;data.table&amp;#39; and &amp;#39;data.frame&amp;#39;: 1460 obs. of 81 variables: ## $ Id : int 1 2 3 4 5 6 7 8 9 10 ... ## $ MSSubClass : int 60 20 60 70 60 50 20 60 50 190 .</description>
     </item>
     
   </channel>

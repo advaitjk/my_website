@@ -81,6 +81,554 @@
                                 <span class="image main"><img src="/img/blogs/pic09.jpg" alt="" /></span>
                             
                             
+
+
+<pre class="r"><code>cat_var &lt;- names(train)[which(sapply(train, is.character))]
+cat_car &lt;- c(cat_var, &#39;BedroomAbvGr&#39;, &#39;HalfBath&#39;, &#39; KitchenAbvGr&#39;,&#39;BsmtFullBath&#39;, &#39;BsmtHalfBath&#39;, &#39;MSSubClass&#39;)
+numeric_var &lt;- names(train)[which(sapply(train, is.numeric))]</code></pre>
+<div id="structure-of-the-data" class="section level2">
+<h2>Structure of the data</h2>
+<p>The housing data set has 1460 rows and 81 features with the target feature Sale Price.</p>
+<pre class="r"><code>dim(train)</code></pre>
+<pre><code>## [1] 1460   81</code></pre>
+<pre class="r"><code>str(train)</code></pre>
+<pre><code>## Classes &#39;data.table&#39; and &#39;data.frame&#39;:   1460 obs. of  81 variables:
+##  $ Id           : int  1 2 3 4 5 6 7 8 9 10 ...
+##  $ MSSubClass   : int  60 20 60 70 60 50 20 60 50 190 ...
+##  $ MSZoning     : chr  &quot;RL&quot; &quot;RL&quot; &quot;RL&quot; &quot;RL&quot; ...
+##  $ LotFrontage  : int  65 80 68 60 84 85 75 NA 51 50 ...
+##  $ LotArea      : int  8450 9600 11250 9550 14260 14115 10084 10382 6120 7420 ...
+##  $ Street       : chr  &quot;Pave&quot; &quot;Pave&quot; &quot;Pave&quot; &quot;Pave&quot; ...
+##  $ Alley        : chr  NA NA NA NA ...
+##  $ LotShape     : chr  &quot;Reg&quot; &quot;Reg&quot; &quot;IR1&quot; &quot;IR1&quot; ...
+##  $ LandContour  : chr  &quot;Lvl&quot; &quot;Lvl&quot; &quot;Lvl&quot; &quot;Lvl&quot; ...
+##  $ Utilities    : chr  &quot;AllPub&quot; &quot;AllPub&quot; &quot;AllPub&quot; &quot;AllPub&quot; ...
+##  $ LotConfig    : chr  &quot;Inside&quot; &quot;FR2&quot; &quot;Inside&quot; &quot;Corner&quot; ...
+##  $ LandSlope    : chr  &quot;Gtl&quot; &quot;Gtl&quot; &quot;Gtl&quot; &quot;Gtl&quot; ...
+##  $ Neighborhood : chr  &quot;CollgCr&quot; &quot;Veenker&quot; &quot;CollgCr&quot; &quot;Crawfor&quot; ...
+##  $ Condition1   : chr  &quot;Norm&quot; &quot;Feedr&quot; &quot;Norm&quot; &quot;Norm&quot; ...
+##  $ Condition2   : chr  &quot;Norm&quot; &quot;Norm&quot; &quot;Norm&quot; &quot;Norm&quot; ...
+##  $ BldgType     : chr  &quot;1Fam&quot; &quot;1Fam&quot; &quot;1Fam&quot; &quot;1Fam&quot; ...
+##  $ HouseStyle   : chr  &quot;2Story&quot; &quot;1Story&quot; &quot;2Story&quot; &quot;2Story&quot; ...
+##  $ OverallQual  : int  7 6 7 7 8 5 8 7 7 5 ...
+##  $ OverallCond  : int  5 8 5 5 5 5 5 6 5 6 ...
+##  $ YearBuilt    : int  2003 1976 2001 1915 2000 1993 2004 1973 1931 1939 ...
+##  $ YearRemodAdd : int  2003 1976 2002 1970 2000 1995 2005 1973 1950 1950 ...
+##  $ RoofStyle    : chr  &quot;Gable&quot; &quot;Gable&quot; &quot;Gable&quot; &quot;Gable&quot; ...
+##  $ RoofMatl     : chr  &quot;CompShg&quot; &quot;CompShg&quot; &quot;CompShg&quot; &quot;CompShg&quot; ...
+##  $ Exterior1st  : chr  &quot;VinylSd&quot; &quot;MetalSd&quot; &quot;VinylSd&quot; &quot;Wd Sdng&quot; ...
+##  $ Exterior2nd  : chr  &quot;VinylSd&quot; &quot;MetalSd&quot; &quot;VinylSd&quot; &quot;Wd Shng&quot; ...
+##  $ MasVnrType   : chr  &quot;BrkFace&quot; &quot;None&quot; &quot;BrkFace&quot; &quot;None&quot; ...
+##  $ MasVnrArea   : int  196 0 162 0 350 0 186 240 0 0 ...
+##  $ ExterQual    : chr  &quot;Gd&quot; &quot;TA&quot; &quot;Gd&quot; &quot;TA&quot; ...
+##  $ ExterCond    : chr  &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; ...
+##  $ Foundation   : chr  &quot;PConc&quot; &quot;CBlock&quot; &quot;PConc&quot; &quot;BrkTil&quot; ...
+##  $ BsmtQual     : chr  &quot;Gd&quot; &quot;Gd&quot; &quot;Gd&quot; &quot;TA&quot; ...
+##  $ BsmtCond     : chr  &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; &quot;Gd&quot; ...
+##  $ BsmtExposure : chr  &quot;No&quot; &quot;Gd&quot; &quot;Mn&quot; &quot;No&quot; ...
+##  $ BsmtFinType1 : chr  &quot;GLQ&quot; &quot;ALQ&quot; &quot;GLQ&quot; &quot;ALQ&quot; ...
+##  $ BsmtFinSF1   : int  706 978 486 216 655 732 1369 859 0 851 ...
+##  $ BsmtFinType2 : chr  &quot;Unf&quot; &quot;Unf&quot; &quot;Unf&quot; &quot;Unf&quot; ...
+##  $ BsmtFinSF2   : int  0 0 0 0 0 0 0 32 0 0 ...
+##  $ BsmtUnfSF    : int  150 284 434 540 490 64 317 216 952 140 ...
+##  $ TotalBsmtSF  : int  856 1262 920 756 1145 796 1686 1107 952 991 ...
+##  $ Heating      : chr  &quot;GasA&quot; &quot;GasA&quot; &quot;GasA&quot; &quot;GasA&quot; ...
+##  $ HeatingQC    : chr  &quot;Ex&quot; &quot;Ex&quot; &quot;Ex&quot; &quot;Gd&quot; ...
+##  $ CentralAir   : chr  &quot;Y&quot; &quot;Y&quot; &quot;Y&quot; &quot;Y&quot; ...
+##  $ Electrical   : chr  &quot;SBrkr&quot; &quot;SBrkr&quot; &quot;SBrkr&quot; &quot;SBrkr&quot; ...
+##  $ 1stFlrSF     : int  856 1262 920 961 1145 796 1694 1107 1022 1077 ...
+##  $ 2ndFlrSF     : int  854 0 866 756 1053 566 0 983 752 0 ...
+##  $ LowQualFinSF : int  0 0 0 0 0 0 0 0 0 0 ...
+##  $ GrLivArea    : int  1710 1262 1786 1717 2198 1362 1694 2090 1774 1077 ...
+##  $ BsmtFullBath : int  1 0 1 1 1 1 1 1 0 1 ...
+##  $ BsmtHalfBath : int  0 1 0 0 0 0 0 0 0 0 ...
+##  $ FullBath     : int  2 2 2 1 2 1 2 2 2 1 ...
+##  $ HalfBath     : int  1 0 1 0 1 1 0 1 0 0 ...
+##  $ BedroomAbvGr : int  3 3 3 3 4 1 3 3 2 2 ...
+##  $ KitchenAbvGr : int  1 1 1 1 1 1 1 1 2 2 ...
+##  $ KitchenQual  : chr  &quot;Gd&quot; &quot;TA&quot; &quot;Gd&quot; &quot;Gd&quot; ...
+##  $ TotRmsAbvGrd : int  8 6 6 7 9 5 7 7 8 5 ...
+##  $ Functional   : chr  &quot;Typ&quot; &quot;Typ&quot; &quot;Typ&quot; &quot;Typ&quot; ...
+##  $ Fireplaces   : int  0 1 1 1 1 0 1 2 2 2 ...
+##  $ FireplaceQu  : chr  NA &quot;TA&quot; &quot;TA&quot; &quot;Gd&quot; ...
+##  $ GarageType   : chr  &quot;Attchd&quot; &quot;Attchd&quot; &quot;Attchd&quot; &quot;Detchd&quot; ...
+##  $ GarageYrBlt  : int  2003 1976 2001 1998 2000 1993 2004 1973 1931 1939 ...
+##  $ GarageFinish : chr  &quot;RFn&quot; &quot;RFn&quot; &quot;RFn&quot; &quot;Unf&quot; ...
+##  $ GarageCars   : int  2 2 2 3 3 2 2 2 2 1 ...
+##  $ GarageArea   : int  548 460 608 642 836 480 636 484 468 205 ...
+##  $ GarageQual   : chr  &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; ...
+##  $ GarageCond   : chr  &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; &quot;TA&quot; ...
+##  $ PavedDrive   : chr  &quot;Y&quot; &quot;Y&quot; &quot;Y&quot; &quot;Y&quot; ...
+##  $ WoodDeckSF   : int  0 298 0 0 192 40 255 235 90 0 ...
+##  $ OpenPorchSF  : int  61 0 42 35 84 30 57 204 0 4 ...
+##  $ EnclosedPorch: int  0 0 0 272 0 0 0 228 205 0 ...
+##  $ 3SsnPorch    : int  0 0 0 0 0 320 0 0 0 0 ...
+##  $ ScreenPorch  : int  0 0 0 0 0 0 0 0 0 0 ...
+##  $ PoolArea     : int  0 0 0 0 0 0 0 0 0 0 ...
+##  $ PoolQC       : chr  NA NA NA NA ...
+##  $ Fence        : chr  NA NA NA NA ...
+##  $ MiscFeature  : chr  NA NA NA NA ...
+##  $ MiscVal      : int  0 0 0 0 0 700 0 350 0 0 ...
+##  $ MoSold       : int  2 5 9 2 12 10 8 11 4 1 ...
+##  $ YrSold       : int  2008 2007 2008 2006 2008 2009 2007 2009 2008 2008 ...
+##  $ SaleType     : chr  &quot;WD&quot; &quot;WD&quot; &quot;WD&quot; &quot;WD&quot; ...
+##  $ SaleCondition: chr  &quot;Normal&quot; &quot;Normal&quot; &quot;Normal&quot; &quot;Abnorml&quot; ...
+##  $ SalePrice    : int  208500 181500 223500 140000 250000 143000 307000 200000 129900 118000 ...
+##  - attr(*, &quot;.internal.selfref&quot;)=&lt;externalptr&gt;</code></pre>
+</div>
+<div id="summarize-the-missing-values-in-the-data." class="section level1">
+<h1>Summarize the missing values in the data.</h1>
+<p>Viewing the first five rows of the data indicates that there are columns which have missing values. The categorical variables with the largest number of missing values are: Alley, FirePlaceQu, PoolQC, Fence, and MiscFeature.</p>
+<ul>
+<li>Alley: indicates the type of alley access</li>
+<li>FirePlaceQu: FirePlace Quality</li>
+<li>PoolQC: Pool Quality</li>
+<li>Fence: Fence Quality</li>
+<li>MiscFeature: Miscellaneous features not covered in other categories</li>
+</ul>
+<p>The missing values indicate that majority of the houses do not have alley access, no pool, no fence and no elevator, 2nd garage, shed or tennis court that is covered by the MiscFeature.</p>
+<p>The numeric variables do not have as many missing values but there are still some present. There are 259 values for the LotFrontage, 8 missing values for MasVnrArea and 81 missing values for GarageYrBlt.</p>
+<ul>
+<li>LotFrontage: Linear feet of street connected to property</li>
+<li>GarageYrBlt: Year garage was built</li>
+<li>MasVnrArea: Masonry veener area in square feet</li>
+</ul>
+<p>Definition of Masonry Veener from google:
+Veneer masonry is a popular choice for home building and remodeling, because it gives the appearance of a solid brick or stone wall while providing better economy and insulation. It can be used as an addition to conventional wood frame structures, and can be placed on concrete block walls.</p>
+<p>Brick veeners are not essential to the stucture of the house but are used to chance the appearance of the wall while providing better insulation. They tend to only have one brick layer.</p>
+<pre class="r"><code>head(train)</code></pre>
+<pre><code>##    Id MSSubClass MSZoning LotFrontage LotArea Street Alley LotShape LandContour
+## 1:  1         60       RL          65    8450   Pave  &lt;NA&gt;      Reg         Lvl
+## 2:  2         20       RL          80    9600   Pave  &lt;NA&gt;      Reg         Lvl
+## 3:  3         60       RL          68   11250   Pave  &lt;NA&gt;      IR1         Lvl
+## 4:  4         70       RL          60    9550   Pave  &lt;NA&gt;      IR1         Lvl
+## 5:  5         60       RL          84   14260   Pave  &lt;NA&gt;      IR1         Lvl
+## 6:  6         50       RL          85   14115   Pave  &lt;NA&gt;      IR1         Lvl
+##    Utilities LotConfig LandSlope Neighborhood Condition1 Condition2 BldgType
+## 1:    AllPub    Inside       Gtl      CollgCr       Norm       Norm     1Fam
+## 2:    AllPub       FR2       Gtl      Veenker      Feedr       Norm     1Fam
+## 3:    AllPub    Inside       Gtl      CollgCr       Norm       Norm     1Fam
+## 4:    AllPub    Corner       Gtl      Crawfor       Norm       Norm     1Fam
+## 5:    AllPub       FR2       Gtl      NoRidge       Norm       Norm     1Fam
+## 6:    AllPub    Inside       Gtl      Mitchel       Norm       Norm     1Fam
+##    HouseStyle OverallQual OverallCond YearBuilt YearRemodAdd RoofStyle RoofMatl
+## 1:     2Story           7           5      2003         2003     Gable  CompShg
+## 2:     1Story           6           8      1976         1976     Gable  CompShg
+## 3:     2Story           7           5      2001         2002     Gable  CompShg
+## 4:     2Story           7           5      1915         1970     Gable  CompShg
+## 5:     2Story           8           5      2000         2000     Gable  CompShg
+## 6:     1.5Fin           5           5      1993         1995     Gable  CompShg
+##    Exterior1st Exterior2nd MasVnrType MasVnrArea ExterQual ExterCond Foundation
+## 1:     VinylSd     VinylSd    BrkFace        196        Gd        TA      PConc
+## 2:     MetalSd     MetalSd       None          0        TA        TA     CBlock
+## 3:     VinylSd     VinylSd    BrkFace        162        Gd        TA      PConc
+## 4:     Wd Sdng     Wd Shng       None          0        TA        TA     BrkTil
+## 5:     VinylSd     VinylSd    BrkFace        350        Gd        TA      PConc
+## 6:     VinylSd     VinylSd       None          0        TA        TA       Wood
+##    BsmtQual BsmtCond BsmtExposure BsmtFinType1 BsmtFinSF1 BsmtFinType2
+## 1:       Gd       TA           No          GLQ        706          Unf
+## 2:       Gd       TA           Gd          ALQ        978          Unf
+## 3:       Gd       TA           Mn          GLQ        486          Unf
+## 4:       TA       Gd           No          ALQ        216          Unf
+## 5:       Gd       TA           Av          GLQ        655          Unf
+## 6:       Gd       TA           No          GLQ        732          Unf
+##    BsmtFinSF2 BsmtUnfSF TotalBsmtSF Heating HeatingQC CentralAir Electrical
+## 1:          0       150         856    GasA        Ex          Y      SBrkr
+## 2:          0       284        1262    GasA        Ex          Y      SBrkr
+## 3:          0       434         920    GasA        Ex          Y      SBrkr
+## 4:          0       540         756    GasA        Gd          Y      SBrkr
+## 5:          0       490        1145    GasA        Ex          Y      SBrkr
+## 6:          0        64         796    GasA        Ex          Y      SBrkr
+##    1stFlrSF 2ndFlrSF LowQualFinSF GrLivArea BsmtFullBath BsmtHalfBath FullBath
+## 1:      856      854            0      1710            1            0        2
+## 2:     1262        0            0      1262            0            1        2
+## 3:      920      866            0      1786            1            0        2
+## 4:      961      756            0      1717            1            0        1
+## 5:     1145     1053            0      2198            1            0        2
+## 6:      796      566            0      1362            1            0        1
+##    HalfBath BedroomAbvGr KitchenAbvGr KitchenQual TotRmsAbvGrd Functional
+## 1:        1            3            1          Gd            8        Typ
+## 2:        0            3            1          TA            6        Typ
+## 3:        1            3            1          Gd            6        Typ
+## 4:        0            3            1          Gd            7        Typ
+## 5:        1            4            1          Gd            9        Typ
+## 6:        1            1            1          TA            5        Typ
+##    Fireplaces FireplaceQu GarageType GarageYrBlt GarageFinish GarageCars
+## 1:          0        &lt;NA&gt;     Attchd        2003          RFn          2
+## 2:          1          TA     Attchd        1976          RFn          2
+## 3:          1          TA     Attchd        2001          RFn          2
+## 4:          1          Gd     Detchd        1998          Unf          3
+## 5:          1          TA     Attchd        2000          RFn          3
+## 6:          0        &lt;NA&gt;     Attchd        1993          Unf          2
+##    GarageArea GarageQual GarageCond PavedDrive WoodDeckSF OpenPorchSF
+## 1:        548         TA         TA          Y          0          61
+## 2:        460         TA         TA          Y        298           0
+## 3:        608         TA         TA          Y          0          42
+## 4:        642         TA         TA          Y          0          35
+## 5:        836         TA         TA          Y        192          84
+## 6:        480         TA         TA          Y         40          30
+##    EnclosedPorch 3SsnPorch ScreenPorch PoolArea PoolQC Fence MiscFeature
+## 1:             0         0           0        0   &lt;NA&gt;  &lt;NA&gt;        &lt;NA&gt;
+## 2:             0         0           0        0   &lt;NA&gt;  &lt;NA&gt;        &lt;NA&gt;
+## 3:             0         0           0        0   &lt;NA&gt;  &lt;NA&gt;        &lt;NA&gt;
+## 4:           272         0           0        0   &lt;NA&gt;  &lt;NA&gt;        &lt;NA&gt;
+## 5:             0         0           0        0   &lt;NA&gt;  &lt;NA&gt;        &lt;NA&gt;
+## 6:             0       320           0        0   &lt;NA&gt; MnPrv        Shed
+##    MiscVal MoSold YrSold SaleType SaleCondition SalePrice
+## 1:       0      2   2008       WD        Normal    208500
+## 2:       0      5   2007       WD        Normal    181500
+## 3:       0      9   2008       WD        Normal    223500
+## 4:       0      2   2006       WD       Abnorml    140000
+## 5:       0     12   2008       WD        Normal    250000
+## 6:     700     10   2009       WD        Normal    143000</code></pre>
+<pre class="r"><code>colSums(sapply(train, is.na))</code></pre>
+<pre><code>##            Id    MSSubClass      MSZoning   LotFrontage       LotArea 
+##             0             0             0           259             0 
+##        Street         Alley      LotShape   LandContour     Utilities 
+##             0          1369             0             0             0 
+##     LotConfig     LandSlope  Neighborhood    Condition1    Condition2 
+##             0             0             0             0             0 
+##      BldgType    HouseStyle   OverallQual   OverallCond     YearBuilt 
+##             0             0             0             0             0 
+##  YearRemodAdd     RoofStyle      RoofMatl   Exterior1st   Exterior2nd 
+##             0             0             0             0             0 
+##    MasVnrType    MasVnrArea     ExterQual     ExterCond    Foundation 
+##             8             8             0             0             0 
+##      BsmtQual      BsmtCond  BsmtExposure  BsmtFinType1    BsmtFinSF1 
+##            37            37            38            37             0 
+##  BsmtFinType2    BsmtFinSF2     BsmtUnfSF   TotalBsmtSF       Heating 
+##            38             0             0             0             0 
+##     HeatingQC    CentralAir    Electrical      1stFlrSF      2ndFlrSF 
+##             0             0             1             0             0 
+##  LowQualFinSF     GrLivArea  BsmtFullBath  BsmtHalfBath      FullBath 
+##             0             0             0             0             0 
+##      HalfBath  BedroomAbvGr  KitchenAbvGr   KitchenQual  TotRmsAbvGrd 
+##             0             0             0             0             0 
+##    Functional    Fireplaces   FireplaceQu    GarageType   GarageYrBlt 
+##             0             0           690            81            81 
+##  GarageFinish    GarageCars    GarageArea    GarageQual    GarageCond 
+##            81             0             0            81            81 
+##    PavedDrive    WoodDeckSF   OpenPorchSF EnclosedPorch     3SsnPorch 
+##             0             0             0             0             0 
+##   ScreenPorch      PoolArea        PoolQC         Fence   MiscFeature 
+##             0             0          1453          1179          1406 
+##       MiscVal        MoSold        YrSold      SaleType SaleCondition 
+##             0             0             0             0             0 
+##     SalePrice 
+##             0</code></pre>
+<pre class="r"><code>colSums(sapply(train[,.SD, .SDcols = cat_var], is.na))</code></pre>
+<pre><code>##      MSZoning        Street         Alley      LotShape   LandContour 
+##             0             0          1369             0             0 
+##     Utilities     LotConfig     LandSlope  Neighborhood    Condition1 
+##             0             0             0             0             0 
+##    Condition2      BldgType    HouseStyle     RoofStyle      RoofMatl 
+##             0             0             0             0             0 
+##   Exterior1st   Exterior2nd    MasVnrType     ExterQual     ExterCond 
+##             0             0             8             0             0 
+##    Foundation      BsmtQual      BsmtCond  BsmtExposure  BsmtFinType1 
+##             0            37            37            38            37 
+##  BsmtFinType2       Heating     HeatingQC    CentralAir    Electrical 
+##            38             0             0             0             1 
+##   KitchenQual    Functional   FireplaceQu    GarageType  GarageFinish 
+##             0             0           690            81            81 
+##    GarageQual    GarageCond    PavedDrive        PoolQC         Fence 
+##            81            81             0          1453          1179 
+##   MiscFeature      SaleType SaleCondition 
+##          1406             0             0</code></pre>
+<pre class="r"><code>colSums(sapply(train[,.SD, .SDcols = numeric_var], is.na))</code></pre>
+<pre><code>##            Id    MSSubClass   LotFrontage       LotArea   OverallQual 
+##             0             0           259             0             0 
+##   OverallCond     YearBuilt  YearRemodAdd    MasVnrArea    BsmtFinSF1 
+##             0             0             0             8             0 
+##    BsmtFinSF2     BsmtUnfSF   TotalBsmtSF      1stFlrSF      2ndFlrSF 
+##             0             0             0             0             0 
+##  LowQualFinSF     GrLivArea  BsmtFullBath  BsmtHalfBath      FullBath 
+##             0             0             0             0             0 
+##      HalfBath  BedroomAbvGr  KitchenAbvGr  TotRmsAbvGrd    Fireplaces 
+##             0             0             0             0             0 
+##   GarageYrBlt    GarageCars    GarageArea    WoodDeckSF   OpenPorchSF 
+##            81             0             0             0             0 
+## EnclosedPorch     3SsnPorch   ScreenPorch      PoolArea       MiscVal 
+##             0             0             0             0             0 
+##        MoSold        YrSold     SalePrice 
+##             0             0             0</code></pre>
+<p>Visualization for the missing data.</p>
+<pre class="r"><code>plot_Missing &lt;- function(data_in, title = NULL){
+  temp_df &lt;- as.data.frame(ifelse(is.na(data_in), 0, 1))
+  temp_df &lt;- temp_df[,order(colSums(temp_df))]
+  data_temp &lt;- expand.grid(list(x = 1:nrow(temp_df), y = colnames(temp_df)))
+  data_temp$m &lt;- as.vector(as.matrix(temp_df))
+  data_temp &lt;- data.frame(x = unlist(data_temp$x), y = unlist(data_temp$y), m = unlist(data_temp$m))
+  ggplot(data_temp) + geom_tile(aes(x=x, y=y, fill=factor(m))) + scale_fill_manual(values=c(&quot;white&quot;, &quot;black&quot;), name=&quot;Missing\n(0=Yes, 1=No)&quot;) + theme_light() + ylab(&quot;&quot;) + xlab(&quot;&quot;) + ggtitle(title)
+}
+
+
+plot_Missing(train[,colSums(is.na(train)) &gt; 0, with = FALSE])</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/missing%20data_2-1.png" width="672" /></p>
+<p>Let’s gain some insight on the number of houses that were remodeled. According to the data dictionary, if the YearBuilt date is different from the YearRemodAdd date then the house was remodeled. Comparing these two rows indicates that 696 houses were remodeled and 764 houses were not remodeled.</p>
+<pre class="r"><code>sum(train[,&#39;YearRemodAdd&#39;, with = FALSE] != train[,&#39;YearBuilt&#39;, with = FALSE])</code></pre>
+<pre><code>## [1] 696</code></pre>
+<pre class="r"><code>cat(&#39;Percentage of houses remodeled&#39;,sum(train[,&#39;YearRemodAdd&#39;, with = FALSE] != train[,&#39;YearBuilt&#39;, with = FALSE])/ dim(train)[1])</code></pre>
+<pre><code>## Percentage of houses remodeled 0.4767123</code></pre>
+<pre class="r"><code>train %&gt;% select(YearBuilt, YearRemodAdd) %&gt;%    mutate(Remodeled = as.integer(YearBuilt != YearRemodAdd)) %&gt;% ggplot(aes(x= factor(x = Remodeled, labels = c( &#39;No&#39;,&#39;Yes&#39;)))) + geom_bar() + xlab(&#39;Remodeled&#39;) + theme_light()</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<div id="summarize-the-numeric-values-and-the-structure-of-the-data." class="section level2">
+<h2>Summarize the numeric values and the structure of the data.</h2>
+<pre class="r"><code>summary(train[,.SD, .SDcols =numeric_var])</code></pre>
+<pre><code>##        Id           MSSubClass     LotFrontage        LotArea      
+##  Min.   :   1.0   Min.   : 20.0   Min.   : 21.00   Min.   :  1300  
+##  1st Qu.: 365.8   1st Qu.: 20.0   1st Qu.: 59.00   1st Qu.:  7554  
+##  Median : 730.5   Median : 50.0   Median : 69.00   Median :  9478  
+##  Mean   : 730.5   Mean   : 56.9   Mean   : 70.05   Mean   : 10517  
+##  3rd Qu.:1095.2   3rd Qu.: 70.0   3rd Qu.: 80.00   3rd Qu.: 11602  
+##  Max.   :1460.0   Max.   :190.0   Max.   :313.00   Max.   :215245  
+##                                   NA&#39;s   :259                      
+##   OverallQual      OverallCond      YearBuilt     YearRemodAdd 
+##  Min.   : 1.000   Min.   :1.000   Min.   :1872   Min.   :1950  
+##  1st Qu.: 5.000   1st Qu.:5.000   1st Qu.:1954   1st Qu.:1967  
+##  Median : 6.000   Median :5.000   Median :1973   Median :1994  
+##  Mean   : 6.099   Mean   :5.575   Mean   :1971   Mean   :1985  
+##  3rd Qu.: 7.000   3rd Qu.:6.000   3rd Qu.:2000   3rd Qu.:2004  
+##  Max.   :10.000   Max.   :9.000   Max.   :2010   Max.   :2010  
+##                                                                
+##    MasVnrArea       BsmtFinSF1       BsmtFinSF2        BsmtUnfSF     
+##  Min.   :   0.0   Min.   :   0.0   Min.   :   0.00   Min.   :   0.0  
+##  1st Qu.:   0.0   1st Qu.:   0.0   1st Qu.:   0.00   1st Qu.: 223.0  
+##  Median :   0.0   Median : 383.5   Median :   0.00   Median : 477.5  
+##  Mean   : 103.7   Mean   : 443.6   Mean   :  46.55   Mean   : 567.2  
+##  3rd Qu.: 166.0   3rd Qu.: 712.2   3rd Qu.:   0.00   3rd Qu.: 808.0  
+##  Max.   :1600.0   Max.   :5644.0   Max.   :1474.00   Max.   :2336.0  
+##  NA&#39;s   :8                                                           
+##   TotalBsmtSF        1stFlrSF       2ndFlrSF     LowQualFinSF    
+##  Min.   :   0.0   Min.   : 334   Min.   :   0   Min.   :  0.000  
+##  1st Qu.: 795.8   1st Qu.: 882   1st Qu.:   0   1st Qu.:  0.000  
+##  Median : 991.5   Median :1087   Median :   0   Median :  0.000  
+##  Mean   :1057.4   Mean   :1163   Mean   : 347   Mean   :  5.845  
+##  3rd Qu.:1298.2   3rd Qu.:1391   3rd Qu.: 728   3rd Qu.:  0.000  
+##  Max.   :6110.0   Max.   :4692   Max.   :2065   Max.   :572.000  
+##                                                                  
+##    GrLivArea     BsmtFullBath     BsmtHalfBath        FullBath    
+##  Min.   : 334   Min.   :0.0000   Min.   :0.00000   Min.   :0.000  
+##  1st Qu.:1130   1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.:1.000  
+##  Median :1464   Median :0.0000   Median :0.00000   Median :2.000  
+##  Mean   :1515   Mean   :0.4253   Mean   :0.05753   Mean   :1.565  
+##  3rd Qu.:1777   3rd Qu.:1.0000   3rd Qu.:0.00000   3rd Qu.:2.000  
+##  Max.   :5642   Max.   :3.0000   Max.   :2.00000   Max.   :3.000  
+##                                                                   
+##     HalfBath       BedroomAbvGr    KitchenAbvGr    TotRmsAbvGrd   
+##  Min.   :0.0000   Min.   :0.000   Min.   :0.000   Min.   : 2.000  
+##  1st Qu.:0.0000   1st Qu.:2.000   1st Qu.:1.000   1st Qu.: 5.000  
+##  Median :0.0000   Median :3.000   Median :1.000   Median : 6.000  
+##  Mean   :0.3829   Mean   :2.866   Mean   :1.047   Mean   : 6.518  
+##  3rd Qu.:1.0000   3rd Qu.:3.000   3rd Qu.:1.000   3rd Qu.: 7.000  
+##  Max.   :2.0000   Max.   :8.000   Max.   :3.000   Max.   :14.000  
+##                                                                   
+##    Fireplaces     GarageYrBlt     GarageCars      GarageArea    
+##  Min.   :0.000   Min.   :1900   Min.   :0.000   Min.   :   0.0  
+##  1st Qu.:0.000   1st Qu.:1961   1st Qu.:1.000   1st Qu.: 334.5  
+##  Median :1.000   Median :1980   Median :2.000   Median : 480.0  
+##  Mean   :0.613   Mean   :1979   Mean   :1.767   Mean   : 473.0  
+##  3rd Qu.:1.000   3rd Qu.:2002   3rd Qu.:2.000   3rd Qu.: 576.0  
+##  Max.   :3.000   Max.   :2010   Max.   :4.000   Max.   :1418.0  
+##                  NA&#39;s   :81                                     
+##    WoodDeckSF      OpenPorchSF     EnclosedPorch      3SsnPorch     
+##  Min.   :  0.00   Min.   :  0.00   Min.   :  0.00   Min.   :  0.00  
+##  1st Qu.:  0.00   1st Qu.:  0.00   1st Qu.:  0.00   1st Qu.:  0.00  
+##  Median :  0.00   Median : 25.00   Median :  0.00   Median :  0.00  
+##  Mean   : 94.24   Mean   : 46.66   Mean   : 21.95   Mean   :  3.41  
+##  3rd Qu.:168.00   3rd Qu.: 68.00   3rd Qu.:  0.00   3rd Qu.:  0.00  
+##  Max.   :857.00   Max.   :547.00   Max.   :552.00   Max.   :508.00  
+##                                                                     
+##   ScreenPorch        PoolArea          MiscVal             MoSold      
+##  Min.   :  0.00   Min.   :  0.000   Min.   :    0.00   Min.   : 1.000  
+##  1st Qu.:  0.00   1st Qu.:  0.000   1st Qu.:    0.00   1st Qu.: 5.000  
+##  Median :  0.00   Median :  0.000   Median :    0.00   Median : 6.000  
+##  Mean   : 15.06   Mean   :  2.759   Mean   :   43.49   Mean   : 6.322  
+##  3rd Qu.:  0.00   3rd Qu.:  0.000   3rd Qu.:    0.00   3rd Qu.: 8.000  
+##  Max.   :480.00   Max.   :738.000   Max.   :15500.00   Max.   :12.000  
+##                                                                        
+##      YrSold       SalePrice     
+##  Min.   :2006   Min.   : 34900  
+##  1st Qu.:2007   1st Qu.:129975  
+##  Median :2008   Median :163000  
+##  Mean   :2008   Mean   :180921  
+##  3rd Qu.:2009   3rd Qu.:214000  
+##  Max.   :2010   Max.   :755000  
+## </code></pre>
+<pre class="r"><code>cat(&#39;Train has&#39;, dim(train)[1], &#39;rows and&#39;, dim(train)[2], &#39;columns.&#39;)</code></pre>
+<pre><code>## Train has 1460 rows and 81 columns.</code></pre>
+<pre class="r"><code>cat(&#39;Test has&#39;, dim(test)[1], &#39;rows and&#39;, dim(test)[2], &#39; columns.&#39;)</code></pre>
+<pre><code>## Test has 1459 rows and 80  columns.</code></pre>
+<pre class="r"><code># The percentage of data missing in train.
+sum(is.na(train)) / (nrow(train) *ncol(train))</code></pre>
+<pre><code>## [1] 0.05889565</code></pre>
+<pre class="r"><code># The percentage of data missing in test.
+sum(is.na(test)) / (nrow(test) * ncol(test))</code></pre>
+<pre><code>## [1] 0.05997258</code></pre>
+<pre class="r"><code># Check for duplicated rows.
+
+cat(&quot;The number of duplicated rows are&quot;, nrow(train) - nrow(unique(train)))</code></pre>
+<pre><code>## The number of duplicated rows are 0</code></pre>
+<pre class="r"><code>####Convert character to factors 
+
+train[,(cat_var) := lapply(.SD, as.factor), .SDcols = cat_var]</code></pre>
+<pre class="r"><code>train_cat &lt;- train[,.SD, .SDcols = cat_var]
+train_cont &lt;- train[,.SD,.SDcols = numeric_var]
+
+plotHist &lt;- function(data_in, i) {
+  data &lt;- data.frame(x=data_in[[i]])
+  p &lt;- ggplot(data=data, aes(x=factor(x))) + stat_count() + xlab(colnames(data_in)[i]) + theme_light() + 
+    theme(axis.text.x = element_text(angle = 90, hjust =1))
+  return (p)
+}
+
+doPlots &lt;- function(data_in, fun, ii, ncol=3) {
+  pp &lt;- list()
+  for (i in ii) {
+    p &lt;- fun(data_in=data_in, i=i)
+    pp &lt;- c(pp, list(p))
+  }
+  do.call(&quot;grid.arrange&quot;, c(pp, ncol=ncol))
+}
+
+
+plotDen &lt;- function(data_in, i){
+  data &lt;- data.frame(x=data_in[[i]], SalePrice = data_in$SalePrice)
+  p &lt;- ggplot(data= data) + geom_line(aes(x = x), stat = &#39;density&#39;, size = 1,alpha = 1.0) +
+    xlab(paste0((colnames(data_in)[i]), &#39;\n&#39;, &#39;Skewness: &#39;,round(skewness(data_in[[i]], na.rm = TRUE), 2))) + theme_light() 
+  return(p)
+   
+}</code></pre>
+</div>
+<div id="barplots-for-the-categorical-features" class="section level2">
+<h2>Barplots for the categorical features</h2>
+<p>The bar plots below offer more insight into the data.
+MSZoning: bar plot indicates that majority of the houses are located in low density residential areas and medium density residential area.</p>
+<p>The type of road access to the property tends to be paved and the houses do not have alleys.</p>
+<ul>
+<li>Landcontour: the houses are built on flat properties</li>
+<li>Utilities: Almost all homes have all public utilities (E,G,W, &amp; S)</li>
+<li>LandSlope: most of the properties have a gentle slope</li>
+</ul>
+<pre class="r"><code>doPlots(train_cat, fun = plotHist, ii = 1:4, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/categorical-1.png" width="672" /></p>
+<pre class="r"><code>doPlots(train_cat, fun = plotHist, ii  = 4:8, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/categorical-2.png" width="672" /></p>
+<pre class="r"><code>doPlots(train_cat, fun = plotHist, ii = 8:12, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/categorical-3.png" width="672" /></p>
+<pre class="r"><code>doPlots(train_cat, fun = plotHist, ii = 13:18, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/categorical-4.png" width="672" /></p>
+<pre class="r"><code>doPlots(train_cat, fun = plotHist, ii = 18:22, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/categorical-5.png" width="672" /></p>
+<p>The houses that have sever landslope are located in the Clear Creek and Timberland. The houses with moderate landslope are present in more neighborhood. The Clear Creek and the Crawford neighborhoods seem to have high slopes.</p>
+<pre class="r"><code>train %&gt;% select(LandSlope, Neighborhood, SalePrice) %&gt;% filter(LandSlope == c(&#39;Sev&#39;, &#39;Mod&#39;)) %&gt;% arrange(Neighborhood) %&gt;% group_by(Neighborhood, LandSlope) %&gt;% summarize(Count = n()) %&gt;% ggplot(aes(Neighborhood, Count)) + geom_bar(aes(fill = LandSlope), position = &#39;dodge&#39;, stat = &#39;identity&#39;) + theme_light() +theme(axis.text.x = element_text(angle = 90, hjust =1))</code></pre>
+<pre><code>## `summarise()` regrouping output by &#39;Neighborhood&#39; (override with `.groups` argument)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>Plotting a boxplot between the neighboorhoods and sale price shows that BrookSide and South &amp; West of Iowa State University have cheap houses. While Northridge and Northridge Heights are rich neighborhoods with several outliers in terms of price.</p>
+<pre class="r"><code>train %&gt;% select(Neighborhood, SalePrice) %&gt;% ggplot(aes(factor(Neighborhood), SalePrice)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 90, hjust =1)) + xlab(&#39;Neighborhoods&#39;)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+</div>
+<div id="density-plots-for-numeric-variables." class="section level2">
+<h2>Density plots for numeric variables.</h2>
+<p>Density plots of the features indicates that the features are skewed. The denisty plot for YearBuilt shows that the data set contains a mix of new and old houses. It shows a downturn in the number of houses in recent years, possibily due to the housing crisis.</p>
+<pre class="r"><code>doPlots(train_cont, fun = plotDen, ii = 2:6, ncol = 2)</code></pre>
+<pre><code>## Warning: Removed 259 rows containing non-finite values (stat_density).</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/numeric-1.png" width="672" /></p>
+<pre class="r"><code>doPlots(train_cont, fun = plotDen, ii = 7:12, ncol = 2)</code></pre>
+<pre><code>## Warning: Removed 8 rows containing non-finite values (stat_density).</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/numeric-2.png" width="672" /></p>
+<pre class="r"><code>doPlots(train_cont, fun = plotDen, ii = 13:17, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/numeric-3.png" width="672" /></p>
+<p>The histograms below show that majority of the houses have 2 full baths, 0 half baths, and have an average of 3 bedrooms.</p>
+<pre class="r"><code>doPlots(train_cont, fun = plotHist, ii = 18:23, ncol = 2)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+</div>
+<div id="explore-the-correlation" class="section level2">
+<h2>Explore the correlation</h2>
+<pre class="r"><code>correlations &lt;- cor(na.omit(train_cont[,-1, with = FALSE]))
+
+# correlations
+row_indic &lt;- apply(correlations, 1, function(x) sum(x &gt; 0.3 | x &lt; -0.3) &gt; 1)
+
+correlations&lt;- correlations[row_indic ,row_indic ]
+corrplot(correlations, method=&quot;square&quot;)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-10-1.png" width="960" /></p>
+</div>
+<div id="plot-scatter-plot-for-variables-that-have-high-correlation." class="section level2">
+<h2>Plot scatter plot for variables that have high correlation.</h2>
+<p>The correlation matrix below shows that there are several variables that are strongly and positively correlated with housing price.</p>
+<p>High positive correlation:</p>
+<ul>
+<li>OverallQual</li>
+<li>YearBuilt</li>
+<li>YearRemodAdd</li>
+<li>MasvnrArea</li>
+<li>BsmtFinSF1</li>
+<li>TotalBsmtSF</li>
+<li>1stFlrSF</li>
+<li>GrLiveArea</li>
+<li>FullBath</li>
+<li>TotRmsAbvGrd</li>
+<li>FirePlaces</li>
+<li>GarageYrBlt</li>
+<li>GarageCars</li>
+<li>GarageArea</li>
+<li>WoodDeskSF</li>
+<li>OpenPorchSF</li>
+</ul>
+<p>The number of enclosed porches are negatively correlated with year built. It seems that potential housebuyers do not want an enclosed porch and house developers have been building less enclosed porches in recent years. It is also negatively correlated with SalePrice, which makes sense.</p>
+<p>There is some slight negative correlation between OverallCond and SalePrice. There is also strong negative correlation between Yearbuilt and OverallCond. It seems to be that recently built houses tend to been in worse Overall Condition.</p>
+<pre class="r"><code>train %&gt;% select(OverallCond, YearBuilt) %&gt;% ggplot(aes(factor(OverallCond),YearBuilt)) + geom_boxplot() + xlab(&#39;Overall Condition&#39;)</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<pre class="r"><code>plotCorr &lt;- function(data_in, i){
+  data &lt;- data.frame(x = data_in[[i]], SalePrice = data_in$SalePrice)
+  p &lt;- ggplot(data, aes(x = x, y = SalePrice)) + geom_point(shape = 1, na.rm = TRUE) + geom_smooth(method = lm ) + xlab(paste0(colnames(data_in)[i], &#39;\n&#39;, &#39;R-Squared: &#39;, round(cor(data_in[[i]], data$SalePrice, use = &#39;complete.obs&#39;), 2))) + theme_light()
+  return(suppressWarnings(p))
+}
+
+
+highcorr &lt;- c(names(correlations[,&#39;SalePrice&#39;])[which(correlations[,&#39;SalePrice&#39;] &gt; 0.5)], names(correlations[,&#39;SalePrice&#39;])[which(correlations[,&#39;SalePrice&#39;] &lt; -0.2)])
+ 
+data_corr &lt;- train[,highcorr, with = FALSE]
+
+
+doPlots(data_corr, fun = plotCorr, ii = 1:6)</code></pre>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<pre class="r"><code>doPlots(data_corr, fun = plotCorr, ii = 6:11)</code></pre>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<pre><code>## Warning: Removed 81 rows containing non-finite values (stat_smooth).</code></pre>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;
+## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-12-2.png" width="672" /></p>
+<p>The histogram for the response variable SalePrice shows that it is skewed. Taking the log of the variable normalizes it.</p>
+<pre class="r"><code>library(scales)
+ggplot(train, aes(x=SalePrice)) + geom_histogram(col = &#39;white&#39;) + theme_light() +scale_x_continuous(labels = comma)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<pre class="r"><code>summary(train[,.(SalePrice)])</code></pre>
+<pre><code>##    SalePrice     
+##  Min.   : 34900  
+##  1st Qu.:129975  
+##  Median :163000  
+##  Mean   :180921  
+##  3rd Qu.:214000  
+##  Max.   :755000</code></pre>
+<pre class="r"><code>#Normalize distribution
+ggplot(train, aes(x=log(SalePrice+1))) + geom_histogram(col = &#39;white&#39;) + theme_light()</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="/blogs/blog2_files/figure-html/unnamed-chunk-13-2.png" width="672" /></p>
+</div>
+</div>
+
                         </div>
                     </section>
             <!-- Disqus Inject -->

@@ -1,0 +1,158 @@
+---
+title: "Presidential Election"
+author: "Advait Jayant"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: zenburn
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+    code_folding: show
+---
+
+
+
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+
+```{r load-libraries, warning=FALSE, message=FALSE, echo=FALSE}
+# We start by downloading all the packages necessary for this homework
+library(tidyverse) 
+library(ggrepel)
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(fivethirtyeight)
+library(here)
+library(skimr)
+library(janitor)
+library(tidyquant)
+library(vroom)
+library(kableExtra)
+library(knitr)
+library(tidytext)
+library(ggpubr)
+
+```
+
+# 2016 California Contributors plots
+
+The objective of this challenge is to reproduce a plot depicting the top 10 cities with the maximum contributions to Ms. Clinton’s and Donald Trump’s campaign. The author of this code is clearly more biased towards one than the other.
+
+The plot of the end-result will look like:
+
+```{r challenge2, echo=FALSE, out.width="100%"}
+knitr::include_graphics(here::here("images", "challenge2.png"), error = FALSE)
+```
+
+The first step involves loading the CA_contributors_2016.csv file into a dataframe.
+
+```{r, load_CA_data, warnings= FALSE, message=FALSE}
+# We will load our datasets with vroom because vroom vroom. 
+
+CA_contributors_2016 <- vroom::vroom("CA_contributors_2016.csv")
+glimpse(CA_contributors_2016)
+
+
+```
+
+We can see that the attributes of this dataframe contain the details of the contributions to each candidate: the name of the candidate receiving the contribution, the amount received, the ZIP code of the donator, and the contribution date.
+Our task at hand involves finding the top 10 cities from where the contributions actually came from to Ms. Clinton and Donald, but we don’t have any details about the cities in this dataframe! So how do we solve this problem? In order to solve this problem, we will download the zip code database and join it with our dataframe to find the cities.
+
+```{r, zip_code, warnings= FALSE, message=FALSE}
+# Let's vroom vroom the zip code data and see a glimpse of it. 
+zip_code_database <- vroom::vroom(("zip_code_database.csv"), col_types = cols(zip = col_double()))
+glimpse(zip_code_database)
+```
+
+The attribute that is common in both tables is the one which we will use our join function on! We will be using an inner join to join the tables because we only want those records that lie in the intersection of the tables. Now let’s actually create the dataframe that we need for our plot!
+
+``` {r}
+CA_contributors_2016 %>%
+  select(cand_nm)
+```
+
+```{r, create_dataframe, warnings= FALSE, message=FALSE, echo=TRUE}
+
+CA_plot_data <- CA_contributors_2016 %>% 
+  # We will begin by inner joining the table with the zip code table.
+  inner_join(zip_code_database) %>% 
+  # There are 19 attributes in the resultant dataframe, obtained after joining the two dataframes. We will select only the 3 we actually need.
+  select(cand_nm, contb_receipt_amt, primary_city) %>% 
+  #We will group by candidate name and the primary city attribute
+  group_by(cand_nm, primary_city) %>% 
+  # Only those records with Trump and Ms. Clinton are needed
+  filter(cand_nm == "Clinton, Hillary Rodham" | cand_nm == "Trump, Donald J.") # %>% 
+  # The total_sum attribute will now contain the total sum collected in each city by both of the candidates.  
+  # summarise(total_per_city = sum(contb_receipt_amt)) %>% 
+  # Now, we select only the top 10 cities
+  # top_n(10, total_per_city) %>% 
+  # Now, we need to reorder the total_per_city to make sure that it is in descending order! 
+  ungroup() # %>%
+  # mutate(cand_nm = as.factor(cand_nm), primary_city = reorder_within(primary_city, total_per_city, cand_nm)) 
+
+CA_plot_data
+```
+Now that we have all of the data that we actually need to construct the plot, it’s time to get our hands dirty! After taking a look at the dataframe we can clearly see that San Frannsico and LA donated crazy amounts of money to Ms. Clinton’s campaign. The highest amount she received was a staggering USD 1.23 million, whereas Trump’s highest amount was just about USD 0.54 million. I guess that this result would lead to the hypothesis - “Money can buy you everything” being proved false haha. But of course, jokes aside, the real numbers that would be important would be total contributions from all cities and not just the total contribution per city.
+
+Replication:
+```{r, replication, warnings= FALSE, message=FALSE, echo=TRUE, fig.width=9, fig.height=4.5}
+# The magnitudes of the donations to Trump's and Ms. Clinton's campaigns are clearly quite different and therefore, we will need to use different scales on the x-axis! 
+x_scales <- function(x) { 
+  if (max(x) < 600000) 
+    c(0, 200000, 400000) 
+  else 
+    c(0, 4000000, 8000000, 12000000) }
+
+# Getting our hands dirty with plots
+ggplot(CA_plot_data, aes(x = primary_city, y = total_per_city, fill = cand_nm)) + 
+  #We need to plot a bar chart - but we don't need a legend
+  geom_col(show.legend = FALSE) + 
+  # We need bar charts for both the candidates! 
+  facet_wrap(~cand_nm, scales = "free") + 
+  # We want the x-axis to hold the total contribution amounts and y-axis to hold the city names
+  coord_flip() +
+  # Reoordering the x-axis
+  scale_x_reordered() +
+  # We need continuoius position scales for our y-values
+  scale_y_continuous(labels = scales::dollar, breaks = x_scales) + 
+  # Making tweaks to the presentation of the graph
+  # Adding 
+  labs(subtitle = "Where did candidates raise most money?",
+       x = NULL,
+       y = "Amount raised") + 
+  # Changing the colours
+  scale_fill_manual(values=c("#2e74c0", "#cb454a")) + 
+  theme(
+    # Changing the subtitle size
+    plot.subtitle = element_text(size = 10), 
+    # Changing Axes Title Sizes
+    axis.title = element_text(size = 9),
+    # Changing Axes Text Sizes
+    axis.text=element_text(size=7), 
+    # Adding grey grid lines (77 is a lucky number!) 
+    panel.grid.major = element_line(colour = "gray77"), 
+    panel.grid.minor = element_line(colour = "gray77"), 
+    # Adding a frame around the plots
+    panel.background = element_rect(color="black", size=0.5, fill = NA), 
+    strip.text = element_text(size=8),
+  )
+
+```
+Voila! Now, we have replicated the plot that depicts the top 10 cities that contributed to each of the two candidates. This task was pretty challenging because it can get a little annoying to exactly duplicate the styling… but the end result looks great! :)
