@@ -8,7 +8,7 @@ description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis mag
 draft: no
 image: pic01.jpg
 keywords: ''
-slug: blog1
+slug: blog5
 categories:
 - ''
 - ''
@@ -80,7 +80,7 @@ dim(all)</code></pre>
 <h1>Exploring some of the most important variables</h1>
 <div id="the-response-variable-saleprice" class="section level2">
 <h2>The response variable; SalePrice</h2>
-<p>As you can see, the sale prices are right skewed. This was expected as few people can afford very expensive houses. I will keep this in mind, and take measures before modeling.</p>
+<p>The SalePrice distribution is a right skewed distribution.</p>
 <pre class="r"><code>ggplot(data=all[!is.na(all$SalePrice),], aes(x=SalePrice)) +
         geom_histogram(fill=&quot;blue&quot;, binwidth = 10000) +
         scale_x_continuous(breaks= seq(0, 800000, by=100000), labels = comma)</code></pre>
@@ -89,12 +89,11 @@ dim(all)</code></pre>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA&#39;s 
 ##   34900  129975  163000  180921  214000  755000    1459</code></pre>
 </div>
-<div id="the-most-important-numeric-predictors" class="section level2">
-<h2>The most important numeric predictors</h2>
-<p>The character variables need some work before I can use them. To get a feel for the dataset, I decided to first see which numeric variables have a high correlation with the SalePrice.</p>
+<div id="important-numeric-predictors" class="section level2">
+<h2>Important Numeric Predictors</h2>
 <div id="correlations-with-saleprice" class="section level3">
 <h3>Correlations with SalePrice</h3>
-<p>Altogether, there are 10 numeric variables with a correlation of at least 0.5 with SalePrice. All those correlations are positive.</p>
+<p>Let us take a look at all of the variables that have correlations with the salesprice variable.</p>
 <pre class="r"><code>numericVars &lt;- which(sapply(all, is.numeric)) #index vector numeric variables
 numericVarNames &lt;- names(numericVars) #saving names vector for use later on
 cat(&#39;There are&#39;, length(numericVars), &#39;numeric variables&#39;)</code></pre>
@@ -1859,11 +1858,11 @@ dtest &lt;- xgb.DMatrix(data = as.matrix(test1))</code></pre>
 )</code></pre>
 <p>The next step is to do cross validation to determine the best number of rounds (for the given set of parameters).</p>
 <pre class="r"><code>xgbcv &lt;- xgb.cv( params = default_param, data = dtrain, nrounds = 500, nfold = 5, showsd = T, stratified = T, print_every_n = 40, early_stopping_rounds = 10, maximize = F)</code></pre>
-<pre><code>## [20:12:09] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
-## [20:12:09] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
-## [20:12:09] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
-## [20:12:09] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
-## [20:12:09] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
+<pre><code>## [22:02:32] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
+## [22:02:32] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
+## [22:02:32] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
+## [22:02:32] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
+## [22:02:32] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.
 ## [1]  train-rmse:10.955575+0.004295   test-rmse:10.955331+0.017846 
 ## Multiple eval metrics are present. Will use test_rmse for early stopping.
 ## Will train until test_rmse hasn&#39;t improved in 10 rounds.
@@ -1881,7 +1880,7 @@ dtest &lt;- xgb.DMatrix(data = as.matrix(test1))</code></pre>
 <p>Although it was a bit of work, the hyperparameter tuning definitly paid of, as the cross validated RMSE inproved considerably (from 0.1225 without the caret tuning, to 0.1162 in this version)!</p>
 <pre class="r"><code>#train the model using the best iteration found by cross validation
 xgb_mod &lt;- xgb.train(data = dtrain, params=default_param, nrounds = 454)</code></pre>
-<pre><code>## [20:12:20] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.</code></pre>
+<pre><code>## [22:02:43] WARNING: amalgamation/../src/objective/regression_obj.cu:174: reg:linear is now deprecated in favor of reg:squarederror.</code></pre>
 <pre class="r"><code>XGBpred &lt;- predict(xgb_mod, dtest)
 predictions_XGB &lt;- exp(XGBpred) #need to reverse the log to the real values
 head(predictions_XGB)</code></pre>

@@ -91,11 +91,13 @@ disqusShortname = ""
     enable = true
     # Display your showcases here.
     
+    
     [[params.tiles.showcase]]
-      title = "Housing Prices Prediction Challenge"
-      subtitle = "Ames Housing Dataset"
-      image = "pic01.jpg"
+      title = "Trump's Approval Rating"
+      subtitle = "It izzz what it izzzz"
+      image = "pic05.jpg"
       url = "blogs/blog1"
+
 
     [[params.tiles.showcase]]
       title = "Trump's Approval Rating"
@@ -114,6 +116,13 @@ disqusShortname = ""
       subtitle = "A look at the IMDB 500 Dataset"
       image = "pic04.jpg"
       url = "blogs/blog4"
+      
+    [[params.tiles.showcase]]
+      title = "Housing Prices Prediction Challenge"
+      subtitle = "Ames Housing Dataset"
+      image = "pic01.jpg"
+      url = "blogs/blog5"
+
 
  #   [[params.tiles.showcase]]
  #     title = "Consequat"

@@ -1,2072 +1,1325 @@
 ---
-title: "House Price Prediction"
-date: '2017-10-31T22:26:13-05:00'
-description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna
-  sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa
-  sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem
-  consequat tincidunt. Vivamus et sagittis tempus.
-draft: no
-image: pic01.jpg
-keywords: ''
-slug: blog1
 categories:
-- ''
-- ''
+- ""
+- ""
+date: "2017-10-31T22:26:13-05:00"
+description: 
+draft: false
+image: pic05.jpg
+keywords: "IMDB Dataset"
+slug: blog1
+title: Munich Airbnb Price Prediction
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
 ```
-# Executive Summary
 
-# Introduction
+1. Executive Summary
+  A. Background Information
+  B. Data Cleaning
+  C. Exploratory Data Analysis
+  D. Regression
+  E. Diagnosis and Prediction
 
-The Ames Housing dataset was compiled by Dean De Cock for use in data science education. It's an incredible alternative for data scientists looking for a modernized and expanded version of the often cited Boston Housing dataset. Let's say that we are looking to buy a house in Ames, Iowa, and we want to find the best possible house for our price range, so we are going to use different supervised machine learning techniques to actually find how much this property will set us back! 
+# Background Information 
 
-The Ames Housing Dataset contains 79 explanatory variables that allow us to perform price prediction! :) 
+Let's start this analysis with a bit of background information. As students of the world interested in traveling, we have heard about the Oktoberfest festival which takes place yearly in Munich. For this event, we are looking for accommodation and all of our friends have recommended us Airbnb. Airbnb, the world leader in hotel/hosting in the famous "sharing economy", allows us to rent accommodation directly from individuals in thousands of cities around the world, at dramatically reduced prices in comparison to hotels. 
 
-<center><img src="https://images.unsplash.com/photo-1516156008625-3a9d6067fab5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=2100&q=80"></center>
+So let's imagine that we are going on holiday to Munich; but before we actually get there, we want to make sure that we have the best home for holidaying with our partners. After all, we want to make sure that we impress our partners right? We are going to go there for 4 days and 4 nights, and since it's going to be a romantic vacation, we hope that there are only two people. In order to be able to find the best properties and predict their prices, we are going to begin by loading our dataset. 
 
-# Loading and Exploring Data
+# Data Cleaning
 
-##Loading libraries required and reading the data into R
-
-Loading R packages used besides base R.
-
-```{r, message=FALSE, warning=FALSE}
-library(knitr)
+``` {r, include = FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(here)
+library(skimr)
+library(janitor)
+library(httr)
+library(readxl)
+library(vroom)
+library(infer)
 library(ggplot2)
-library(plyr)
 library(dplyr)
+library(cowplot)
+library(highcharter)
+require(tidy)
+library(leaflet)
+library(plotly)
+library(DT)
+library(shiny)
+library(GGally)
+library(Metrics)
+library(glue)
+library(kableExtra)
+library(ggridges)
 library(corrplot)
-library(caret)
-library(gridExtra)
-library(scales)
-library(Rmisc)
-library(ggrepel)
-library(randomForest)
-library(psych)
-library(xgboost)
+library(broom)
+library(ggfortify)
 ```
 
-Below, I am reading the csv's as dataframes into R.
-
-```{r}
-train <- read.csv("train.csv", stringsAsFactors = F)
-test <- read.csv("test.csv", stringsAsFactors = F)
-```
-
-## Data size and structure
-
-The train dataset consist of character and integer variables. Most of the character variables are actually (ordinal) factors, but I chose to read them into R as character strings as most of them require cleaning and/or feature engineering first. 
-
-```{r}
-dim(train)
-str(train[,c(1:10, 81)]) #display first 10 variables and the response variable
-```
-
-```{r}
-#Getting rid of the IDs but keeping the test IDs in a vector. These are needed to compose the submission file
-test_labels <- test$Id
-test$Id <- NULL
-train$Id <- NULL
-```
-
-```{r}
-test$SalePrice <- NA
-all <- rbind(train, test)
-dim(all)
-```
-
-Without the Id's, the dataframe consists of 79 predictors and our response variable SalePrice.
-
-# Exploring some of the most important variables
-
-## The response variable; SalePrice
-
-As you can see, the sale prices are right skewed. This was expected as few people can afford very expensive houses. I will keep this in mind, and take measures before modeling.
-
-```{r, message=FALSE}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=SalePrice)) +
-        geom_histogram(fill="blue", binwidth = 10000) +
-        scale_x_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
-```
-
-```{r}
-summary(all$SalePrice)
-```
-
-
-## The most important numeric predictors
-
-The character variables need some work before I can use them. To get a feel for the dataset, I decided to first see which numeric variables have a high correlation with the SalePrice.
-
-### Correlations with SalePrice
-
-Altogether, there are 10 numeric variables with a correlation of at least 0.5 with SalePrice. All those correlations are positive.
-
-```{r}
-numericVars <- which(sapply(all, is.numeric)) #index vector numeric variables
-numericVarNames <- names(numericVars) #saving names vector for use later on
-cat('There are', length(numericVars), 'numeric variables')
-
-all_numVar <- all[, numericVars]
-cor_numVar <- cor(all_numVar, use="pairwise.complete.obs") #correlations of all numeric variables
-
-#sort on decreasing correlations with SalePrice
-cor_sorted <- as.matrix(sort(cor_numVar[,'SalePrice'], decreasing = TRUE))
- #select only high corelations
-CorHigh <- names(which(apply(cor_sorted, 1, function(x) abs(x)>0.5)))
-cor_numVar <- cor_numVar[CorHigh, CorHigh]
-
-corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt")
-```
-
-In the remainder of this section, I will visualize the relation between SalePrice and the two predictors with the highest correlation with SalePrice; Overall Quality and the 'Above Grade' Living Area (this is the proportion of the house that is not in a basement; [link](http://www.gimme-shelter.com/above-grade-50066/)).
-
-It also becomes clear the multicollinearity is an issue. For example: the correlation between GarageCars and GarageArea is very high (0.89), and both have similar (high) correlations with SalePrice. The other 6 six variables with a correlation higher than 0.5 with SalePrice are:
--TotalBsmtSF: Total square feet of basement area
--1stFlrSF: First Floor square feet
--FullBath: Full bathrooms above grade
--TotRmsAbvGrd: Total rooms above grade (does not include bathrooms)
--YearBuilt: Original construction date
--YearRemodAdd: Remodel date (same as construction date if no remodeling or additions)
-
-
-### Overall Quality
-
-Overall Quality has the highest correlation with SalePrice among the numeric variables (0.79). It rates the overall material and finish of the house on a scale from 1 (very poor) to 10 (very excellent).
-
-```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice))+
-        geom_boxplot(col='blue') + labs(x='Overall Quality') +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
-```
-
-The positive correlation is certainly there indeed, and seems to be a slightly upward curve. Regarding outliers, I do not see any extreme values. If there is a candidate to take out as an outlier later on, it seems to be the expensive house with grade 4.
-
-### Above Grade (Ground) Living Area (square feet)
-
-The numeric variable with the second highest correlation with SalesPrice is the Above Grade Living Area. This make a lot of sense; big houses are generally more expensive.
-
-```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
-        geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
-        geom_text_repel(aes(label = ifelse(all$GrLivArea[!is.na(all$SalePrice)]>4500, rownames(all), '')))
-        
-```
-
-Especially the two houses with really big living areas and low SalePrices seem outliers (houses 524 and 1299, see labels in graph). I will not take them out yet, as taking outliers can be dangerous. For instance, a low score on the Overall Quality could explain a low price. However, as you can see below, these two houses actually also score maximum points on Overall Quality. Therefore, I will keep houses 1299 and 524 in mind as prime candidates to take out as outliers.
-
-```{r}
-all[c(524, 1299), c('SalePrice', 'GrLivArea', 'OverallQual')]
-```
-
-#Missing data, label encoding, and factorizing variables
-
-## Completeness of the data
-
-First of all, I would like to see which variables contain missing values.
-
-```{r}
-NAcol <- which(colSums(is.na(all)) > 0)
-sort(colSums(sapply(all[NAcol], is.na)), decreasing = TRUE)
-cat('There are', length(NAcol), 'columns with missing values')
-```
-
-Of course, the 1459 NAs in SalePrice match the size of the test set perfectly. This means that I have to fix NAs in 34 predictor variables.
-
-## Imputing missing data {.tabset}
-
-In this section, I am going to fix the 34 predictors that contains missing values. I will go through them working my way down from most NAs until I have fixed them all. If I stumble upon a variable that actually forms a group with other variables, I will also deal with them as a group. For instance, there are multiple variables that relate to Pool, Garage, and Basement.
-
-As I want to keep the document as readable as possible, I decided to use the "Tabs" option that knitr provides. You can find a short analysis for each (group of) variables under each Tab. You don't have to go through all sections, and can also just have a look at a few tabs. If you do so, I think that especially the Garage and Basement sections are worthwhile, as I have been carefull in determing which houses really do not have a basement or garage.
-
-Besides making sure that the NAs are taken care off, I have also converted character variables into ordinal integers if there is clear ordinality, or into factors if levels are categories without ordinality. I will convert these factors into numeric later on by using one-hot encoding (using the model.matrix function).
-
-### Pool variables
-
-**Pool Quality and the PoolArea variable**
-
-The PoolQC is the variable with most NAs. The description is as follows:
-
-PoolQC: Pool quality
-		
-       Ex	Excellent
-       Gd	Good
-       TA	Average/Typical
-       Fa	Fair
-       NA	No Pool
-       
-So, it is obvious that I need to just assign 'No Pool' to the NAs. Also, the high number of NAs makes sense as normally only a small proportion of houses have a pool.
-
-```{r}
-all$PoolQC[is.na(all$PoolQC)] <- 'None'
-```
-
-It is also clear that I can label encode this variable as the values are ordinal. As there a multiple variables that use the same quality levels, I am going to create a vector that I can reuse later on.
-
-```{r}
-Qualities <- c('None' = 0, 'Po' = 1, 'Fa' = 2, 'TA' = 3, 'Gd' = 4, 'Ex' = 5)
-```
-
-Now, I can use the function 'revalue' to do the work for me.
-
-```{r, message=FALSE}
-
-all$PoolQC<-as.integer(revalue(all$PoolQC, Qualities))
-table(all$PoolQC)
-```
-
-However, there is a second variable that relates to Pools. This is the PoolArea variable (in square feet). As you can see below, there are 3 houses without PoolQC. First, I checked if there was a clear relation between the PoolArea and the PoolQC. As I did not see a clear relation (bigger of smaller pools with better PoolQC), I am going to impute PoolQC values based on the Overall Quality of the houses (which is not very high for those 3 houses).
-
-```{r}
-all[all$PoolArea>0 & all$PoolQC==0, c('PoolArea', 'PoolQC', 'OverallQual')]
-
-all$PoolQC[2421] <- 2
-all$PoolQC[2504] <- 3
-all$PoolQC[2600] <- 2
-```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Miscellaneous Feature
-
-**Miscellaneous feature not covered in other categories**
-
-Within Miscellaneous Feature, there are 2814 NAs. As the values are not ordinal, I will convert MiscFeature into a factor. Values:	
-
-       Elev	Elevator
-       Gar2	2nd Garage (if not described in garage section)
-       Othr	Other
-       Shed	Shed (over 100 SF)
-       TenC	Tennis Court
-       NA	None
-
-```{r}
-all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
-all$MiscFeature <- as.factor(all$MiscFeature)
-
-ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..))
-
-table(all$MiscFeature)
-```
-
-When looking at the frequencies, the variable seems irrelevant to me. Having a shed probably means 'no Garage', which would explain the lower sales price for Shed. Also, while it makes a lot of sense that a house with a Tennis court is expensive, there is only one house with a tennis court in the training set.
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Alley
-
-**Type of alley access to property**
-
-Within Alley, there are 2721 NAs. As the values are not ordinal, I will convert Alley into a factor. Values:
-
-       Grvl	Gravel
-       Pave	Paved
-       NA 	No alley access
-
-```{r}
-all$Alley[is.na(all$Alley)] <- 'None'
-all$Alley <- as.factor(all$Alley)
-
-ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue')+
-        scale_y_continuous(breaks= seq(0, 200000, by=50000), labels = comma)
-
-table(all$Alley)
-```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Fence
-
-**Fence quality**
-
-Within Fence, there are 2348 NAs. The values seem to be ordinal. Values:
-
-       GdPrv	Good Privacy
-       MnPrv	Minimum Privacy
-       GdWo	Good Wood
-       MnWw	Minimum Wood/Wire
-       NA	No Fence
-
-```{r}
-all$Fence[is.na(all$Fence)] <- 'None'
-table(all$Fence)
-all[!is.na(all$SalePrice),] %>% group_by(Fence) %>% summarise(median = median(SalePrice), counts=n())
-```
-
-My conclusion is that the values do not seem ordinal (no fence is best). Therefore, I will convert Fence into a factor.
-
-```{r}
-all$Fence <- as.factor(all$Fence)
-```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Fireplace variables
-
-**Fireplace quality, and Number of fireplaces**
-
-Within Fireplace Quality, there are 1420 NAs. Number of fireplaces is complete.
-
-**Fireplace quality**
-
-The number of NAs in FireplaceQu matches the number of houses with 0 fireplaces. This means that I can safely replace the NAs in FireplaceQu with 'no fireplace'. The values are ordinal, and I can use the Qualities vector that I have already created for the Pool Quality. Values:
-
-       Ex	Excellent - Exceptional Masonry Fireplace
-       Gd	Good - Masonry Fireplace in main level
-       TA	Average - Prefabricated Fireplace in main living area or Masonry Fireplace in basement
-       Fa	Fair - Prefabricated Fireplace in basement
-       Po	Poor - Ben Franklin Stove
-       NA	No Fireplace
-
-```{r}
-all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
-all$FireplaceQu<-as.integer(revalue(all$FireplaceQu, Qualities))
-table(all$FireplaceQu)
-```
-
-**Number of fireplaces**
-
-Fireplaces is an integer variable, and there are no missing values.
-```{r}
-table(all$Fireplaces)
-sum(table(all$Fireplaces))
-```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-###Lot variables
-
-3 variables. One with 1 NA, and 2 complete variables.
-
-**LotFrontage: Linear feet of street connected to property**
-
-486 NAs. The most reasonable imputation seems to take the median per neigborhood.
-
-```{r}
-ggplot(all[!is.na(all$LotFrontage),], aes(x=as.factor(Neighborhood), y=LotFrontage)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-```{r}
-for (i in 1:nrow(all)){
-        if(is.na(all$LotFrontage[i])){
-               all$LotFrontage[i] <- as.integer(median(all$LotFrontage[all$Neighborhood==all$Neighborhood[i]], na.rm=TRUE)) 
-        }
-}
-```
-
-**LotShape: General shape of property**
-
-No NAs. Values seem ordinal (Regular=best)
-
-       Reg	Regular	
-       IR1	Slightly irregular
-       IR2	Moderately Irregular
-       IR3	Irregular
-
-```{r}
-all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
-table(all$LotShape)
-sum(table(all$LotShape))
-```
-
-**LotConfig: Lot configuration**
-
-No NAs. The values seemed possibly ordinal to me, but the visualization does not show this. Therefore, I will convert the variable into a factor.
-
-       Inside	Inside lot
-       Corner	Corner lot
-       CulDSac	Cul-de-sac
-       FR2	Frontage on 2 sides of property
-       FR3	Frontage on 3 sides of property
-       
-```{r}
-ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(LotConfig), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue')+
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..))
-```
-
-```{r}
-all$LotConfig <- as.factor(all$LotConfig)
-table(all$LotConfig)
-sum(table(all$LotConfig))
-```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Garage variables
-
-**Altogether, there are 7 variables related to garages**
-
-Two of those have one NA (GarageCars and GarageArea), one has 157 NAs (GarageType), 4 variables have 159 NAs. 
-
-First of all, I am going to replace all 159 missing **GarageYrBlt: Year garage was built** values with the values in YearBuilt (this is similar to YearRemodAdd, which also defaults to YearBuilt if no remodeling or additions).
-
-```{r}
-all$GarageYrBlt[is.na(all$GarageYrBlt)] <- all$YearBuilt[is.na(all$GarageYrBlt)]
-```
-
-As NAs mean 'No Garage' for character variables, I now want to find out where the differences between the 157 NA GarageType and the other 3 character variables with 159 NAs come from.
-
-```{r}
-#check if all 157 NAs are the same observations among the variables with 157/159 NAs
-length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageCond) & is.na(all$GarageQual)))
-
-#Find the 2 additional NAs
-kable(all[!is.na(all$GarageType) & is.na(all$GarageFinish), c('GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')])
-```
-
-The 157 NAs within GarageType all turn out to be NA in GarageCondition, GarageQuality, and GarageFinish as well. The differences are found in houses 2127 and 2577. As you can see, house 2127 actually does seem to have a Garage and house 2577 does not. Therefore, there should be 158 houses without a Garage. To fix house 2127, I will imputate the most common values (modes) for GarageCond, GarageQual, and GarageFinish.
-
-```{r}
-#Imputing modes.
-all$GarageCond[2127] <- names(sort(-table(all$GarageCond)))[1]
-all$GarageQual[2127] <- names(sort(-table(all$GarageQual)))[1]
-all$GarageFinish[2127] <- names(sort(-table(all$GarageFinish)))[1]
-
-#display "fixed" house
-kable(all[2127, c('GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')])
-```
-
-**GarageCars and GarageArea: Size of garage in car capacity and Size of garage in square** 
-
-Both have 1 NA. As you can see above, it is house 2577 for both variables. The problem probably occured as the GarageType for this house is "detached", while all other Garage-variables seem to indicate that this house has no Garage.
-
-```{r}
-#fixing 3 values for house 2577
-all$GarageCars[2577] <- 0
-all$GarageArea[2577] <- 0
-all$GarageType[2577] <- NA
-
-#check if NAs of the character variables are now all 158
-length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageCond) & is.na(all$GarageQual)))
-```
-
-Now, the 4 character variables related to garage all have the same set of 158 NAs, which correspond to 'No Garage'. I will fix all of them in the remainder of this section
-
-**GarageType: Garage location**
-
-The values do not seem ordinal, so I will convert into a factor.
-
-       2Types	More than one type of garage
-       Attchd	Attached to home
-       Basment	Basement Garage
-       BuiltIn	Built-In (Garage part of house - typically has room above garage)
-       CarPort	Car Port
-       Detchd	Detached from home
-       NA	No Garage
-
-```{r}
-all$GarageType[is.na(all$GarageType)] <- 'No Garage'
-all$GarageType <- as.factor(all$GarageType)
-table(all$GarageType)
-```
-
-**GarageFinish: Interior finish of the garage**
-
-The values are ordinal.
-
-       Fin	Finished
-       RFn	Rough Finished	
-       Unf	Unfinished
-       NA	No Garage       
-
-```{r}
-all$GarageFinish[is.na(all$GarageFinish)] <- 'None'
-Finish <- c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)
-
-all$GarageFinish<-as.integer(revalue(all$GarageFinish, Finish))
-table(all$GarageFinish)
-```
-
-**GarageQual: Garage quality**
-
-Another variable than can be made ordinal with the Qualities vector.
-
-       Ex	Excellent
-       Gd	Good
-       TA	Typical/Average
-       Fa	Fair
-       Po	Poor
-       NA	No Garage
-       
-```{r}
-all$GarageQual[is.na(all$GarageQual)] <- 'None'
-all$GarageQual<-as.integer(revalue(all$GarageQual, Qualities))
-table(all$GarageQual)
-```
-
-**GarageCond: Garage condition**
-
-Another variable than can be made ordinal with the Qualities vector.
-
-       Ex	Excellent
-       Gd	Good
-       TA	Typical/Average
-       Fa	Fair
-       Po	Poor
-       NA	No Garage
-
-```{r}
-all$GarageCond[is.na(all$GarageCond)] <- 'None'
-all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
-table(all$GarageCond)
-```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
- 
-### Basement Variables
-
-**Altogether, there are 11 variables that relate to the Basement of a house**
-
-Five of those have 79-82 NAs, six have one or two NAs.
-
-```{r}
-#check if all 79 NAs are the same observations among the variables with 80+ NAs
-length(which(is.na(all$BsmtQual) & is.na(all$BsmtCond) & is.na(all$BsmtExposure) & is.na(all$BsmtFinType1) & is.na(all$BsmtFinType2)))
-
-#Find the additional NAs; BsmtFinType1 is the one with 79 NAs
-all[!is.na(all$BsmtFinType1) & (is.na(all$BsmtCond)|is.na(all$BsmtQual)|is.na(all$BsmtExposure)|is.na(all$BsmtFinType2)), c('BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2')]
-```
-
-So altogether, it seems as if there are 79 houses without a basement, because the basement variables of the other houses with missing values are all 80% complete (missing 1 out of 5 values). I am going to impute the modes to fix those 9 houses.
-
-```{r}
-#Imputing modes.
-all$BsmtFinType2[333] <- names(sort(-table(all$BsmtFinType2)))[1]
-all$BsmtExposure[c(949, 1488, 2349)] <- names(sort(-table(all$BsmtExposure)))[1]
-all$BsmtCond[c(2041, 2186, 2525)] <- names(sort(-table(all$BsmtCond)))[1]
-all$BsmtQual[c(2218, 2219)] <- names(sort(-table(all$BsmtQual)))[1]
+``` {r}
+# Loading the listings dataframe for Munich
+listings <- vroom("http://data.insideairbnb.com/germany/bv/munich/2020-06-20/data/listings.csv.gz") %>% 
+    clean_names()
 ```
 
-Now that the 5 variables considered agree upon 79 houses with 'no basement', I am going to factorize/hot encode them below.
-
-**BsmtQual: Evaluates the height of the basement**
-
-A variable than can be made ordinal with the Qualities vector.
-
-       Ex	Excellent (100+ inches)	
-       Gd	Good (90-99 inches)
-       TA	Typical (80-89 inches)
-       Fa	Fair (70-79 inches)
-       Po	Poor (<70 inches
-       NA	No Basement
-
-```{r, message=FALSE}
-all$BsmtQual[is.na(all$BsmtQual)] <- 'None'
-all$BsmtQual<-as.integer(revalue(all$BsmtQual, Qualities))
-table(all$BsmtQual)
-```
-		
-**BsmtCond: Evaluates the general condition of the basement**
-
-A variable than can be made ordinal with the Qualities vector.
-
-       Ex	Excellent
-       Gd	Good
-       TA	Typical - slight dampness allowed
-       Fa	Fair - dampness or some cracking or settling
-       Po	Poor - Severe cracking, settling, or wetness
-       NA	No Basement
-
-```{r, message=FALSE}
-all$BsmtCond[is.na(all$BsmtCond)] <- 'None'
-all$BsmtCond<-as.integer(revalue(all$BsmtCond, Qualities))
-table(all$BsmtCond)
+``` {r}
+# Skimming the listings
+skim(listings)
 ```
-	
-**BsmtExposure: Refers to walkout or garden level walls**
-
-A variable than can be made ordinal.
 
-       Gd	Good Exposure
-       Av	Average Exposure (split levels or foyers typically score average or above)	
-       Mn	Mimimum Exposure
-       No	No Exposure
-       NA	No Basement
-
-```{r}
-all$BsmtExposure[is.na(all$BsmtExposure)] <- 'None'
-Exposure <- c('None'=0, 'No'=1, 'Mn'=2, 'Av'=3, 'Gd'=4)
-
-all$BsmtExposure<-as.integer(revalue(all$BsmtExposure, Exposure))
-table(all$BsmtExposure)
-```
-       
-**BsmtFinType1: Rating of basement finished area**
-
-A variable than can be made ordinal.
-
-       GLQ	Good Living Quarters
-       ALQ	Average Living Quarters
-       BLQ	Below Average Living Quarters	
-       Rec	Average Rec Room
-       LwQ	Low Quality
-       Unf	Unfinshed
-       NA	No Basement
-		
-```{r}
-all$BsmtFinType1[is.na(all$BsmtFinType1)] <- 'None'
-FinType <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
+From a simple skim of our listings attribute, we can clearly see that there are 11172 rows, or observations, in our dataset. There are 106 columns to begin with, which means that we are dealing with 106 attributes. These are waaaaayyyy too many attributes for our analysis so we will need to make sure that our entire dataset is super clean before we begin solving our regression problem. 
 
-all$BsmtFinType1<-as.integer(revalue(all$BsmtFinType1, FinType))
-table(all$BsmtFinType1)
+``` {r}
+# Creating a beautiful table to show the count of character, date, logical, and numeric variables. 
+table(sapply(listings, class))
 ```
-
-**BsmtFinType2: Rating of basement finished area (if multiple types)**
 
-A variable than can be made ordinal with the FinType vector.
+In our table, we can clearly see that there are 45 character variables, 5 Date variables, 16 logical variables, and 40 numeric variables. 
 
-       GLQ	Good Living Quarters
-       ALQ	Average Living Quarters
-       BLQ	Below Average Living Quarters	
-       Rec	Average Rec Room
-       LwQ	Low Quality
-       Unf	Unfinshed
-       NA	No Basement
-
-```{r}
-all$BsmtFinType2[is.na(all$BsmtFinType2)] <- 'None'
-FinType <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
+There are some variables that are currently characters but should definitely be factor variables, there are host_response_time, host_is_superhost, host_identity_verified, neighbourhood_cleansed, is_location_exact, property_type, room_type, bed_type, calendar_updated, instant_bookable, and cancellation_policy.
 
-all$BsmtFinType2<-as.integer(revalue(all$BsmtFinType2, FinType))
-table(all$BsmtFinType2)
+``` {r}
+# Taking a look at the head of the listings dataframe
+head(listings)
 ```
+107 columns are far too many to work with. So, now let's take a look at the summary statistics of the price attribute in the listings dataframe. 
 
-**Remaining Basement variabes with just a few NAs**
-
-I now still have to deal with those 6 variables that have 1 or 2 NAs.
-
-```{r}
-#display remaining NAs. Using BsmtQual as a reference for the 79 houses without basement agreed upon earlier
-all[(is.na(all$BsmtFullBath)|is.na(all$BsmtHalfBath)|is.na(all$BsmtFinSF1)|is.na(all$BsmtFinSF2)|is.na(all$BsmtUnfSF)|is.na(all$TotalBsmtSF)), c('BsmtQual', 'BsmtFullBath', 'BsmtHalfBath', 'BsmtFinSF1', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF')]
+``` {r}
+# Using favstats to display our favourite statistics 
+favstats(listings$price)
 ```
 
-It should be obvious that those remaining NAs all refer to 'not present'. Below, I am fixing those remaining variables.
+We can see that the minimum price is 0 (not optimal), median price is 82, mean price is 113.17, and there are 28 observations that are missing the price attribute. We will need to clean the price attribute in the process of our analysis. 
 
-**BsmtFullBath: Basement full bathrooms**
-
-An integer variable.
-```{r}
-all$BsmtFullBath[is.na(all$BsmtFullBath)] <-0
-table(all$BsmtFullBath)
+``` {r}
+# Checking for dimensions 
+dim(listings)
 ```
 
-**BsmtHalfBath: Basement half bathrooms**
+In our dataset the column price is non numeric and we have $ symbol appended to all prices. So we have to remove the symbol and change the datatype for visualization. 
 
-An integer variable.
-```{r}
-all$BsmtHalfBath[is.na(all$BsmtHalfBath)] <-0
-table(all$BsmtHalfBath)
-```
+``` {r}
+### Cleaning up the price attribute
+typeof(listings$price)
+listings$price <- sub("\\$","",listings$price)
+listings$price <- as.numeric(listings$price)
+typeof(listings$price)
 
-**BsmtFinSF1: Type 1 finished square feet**
+### Cleaning up the extra people attribute
+listings$extra_people <- sub("\\$","",listings$extra_people)
+listings$extra_people <- as.numeric(listings$extra_people)
 
-An integer variable.
-```{r}
-all$BsmtFinSF1[is.na(all$BsmtFinSF1)] <-0
+### Cleaning up the cleaning_fee attribute
+listings$cleaning_fee <- sub("\\$","",listings$cleaning_fee)
+listings$cleaning_fee <- as.numeric(listings$cleaning_fee)
+typeof(listings$cleaning_fee)
 ```
 
-**BsmtFinSF2: Type 2 finished square feet**
-
-An integer variable.
-```{r}
-all$BsmtFinSF2[is.na(all$BsmtFinSF2)] <-0
-```
+Let us now visualize the missing data in our dataset. 
 
-**BsmtUnfSF: Unfinished square feet of basement area**
+``` {r fig.width = 10, fig.height = 10}
+# The theme that we are going to be using for this is a theme from fivethirtyeight
+th <- theme_fivethirtyeight() + theme(axis.title = element_text(), axis.title.x = element_text()) 
 
-An integer variable.
-```{r}
-all$BsmtUnfSF[is.na(all$BsmtUnfSF)] <-0
-```
+# Visualising the missing dataset
+# First we find all of the listings where there are misisng vlaues 
+missing_airbnb <- listings %>% 
+                    summarise_all(~(sum(is.na(.))/n()))
 
-**TotalBsmtSF: Total square feet of basement area**
+# Then next step is to gather by percent_missing 
+missing_airbnb <- gather(missing_airbnb, key = "variables", value = "percent_missing")
+# Now we will make sure that the minimum percent missing is greater than 0 for our visualisation. 
+missing_airbnb <- missing_airbnb[missing_airbnb$percent_missing > 0.0, ] 
 
-An integer variable.
-```{r}
-all$TotalBsmtSF[is.na(all$TotalBsmtSF)] <-0
+# We will plot a bar chart now to visualise all of the missing data that is now contained in the missing_airbnb dataframes
+ggplot(missing_airbnb, aes(x = reorder(variables, percent_missing), y = percent_missing)) +
+geom_bar(stat = "identity", fill = "navy", aes(color = I('white')), size = 0.3)+
+xlab('variables')+
+coord_flip() + 
+th +
+  ggtitle("Missing Data") +
+  xlab("Column name") +
+  ylab("Percentage missing") +
+  annotate("text", x = 1.5, y = 0.1,label = "(Minimum values have less than 0.001 percentage missing)", color = "slateblue", size = 4, hjust = -0.2, vjust=-2)
+  #theme(plot.title = element_text(family = "Helvetica", face = "bold", size = (15)),
+        #axis.title = element_text(family = "Helvetica", size = (10)),
+        #axis.text = element_text(family = "Helvetica", size = (10)))
 ```
 
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
+The variables xl_picture_url, thumbnail_url, neighbourhood_group_cleansed, medium_url, license, jurisdiction_names, square_feet, monthly_price, weekly_price, and notes have too many missing values (> 70% missing values). These variables won't prove to be particularly helpful in our analysis. 
 
-### Masonry variables
+The cleaning fee attribute contains several missing values: this basically means that there is no cleaning fee for these properties. 
 
-**Masonry veneer type, and masonry veneer area**
-
-Masonry veneer type has 24 NAs. Masonry veneer area has 23 NAs. If a house has a veneer area, it should also have a masonry veneer type. Let's fix this one first.
-
-```{r}
-#check if the 23 houses with veneer area NA are also NA in the veneer type
-length(which(is.na(all$MasVnrType) & is.na(all$MasVnrArea)))
-
-#find the one that should have a MasVnrType
-all[is.na(all$MasVnrType) & !is.na(all$MasVnrArea), c('MasVnrType', 'MasVnrArea')]
-```
-
-```{r}
-#fix this veneer type by imputing the mode
-all$MasVnrType[2611] <- names(sort(-table(all$MasVnrType)))[2] #taking the 2nd value as the 1st is 'none'
-all[2611, c('MasVnrType', 'MasVnrArea')]
+``` {r}
+# Changing all the NAs in missing value to 0s
+listings <- listings %>%
+  mutate(cleaning_fee = case_when(
+    is.na(cleaning_fee) ~ 0, 
+    TRUE ~ cleaning_fee
+  ))
 ```
 
-This leaves me with 23 houses that really have no masonry.
+Let us take a look at the property_type attribute. We want to check which properties are frequented most in our analysis.
 
-**Masonry veneer type**
+``` {r}
+# Checking the number of properties in each property type
+listings %>% 
+  count(property_type) %>% 
+  arrange(desc(n))
 
-Will check the ordinality below.
-
-       BrkCmn	Brick Common
-       BrkFace	Brick Face
-       CBlock	Cinder Block
-       None	None
-       Stone	Stone
-
-```{r}
-all$MasVnrType[is.na(all$MasVnrType)] <- 'None'
-
-all[!is.na(all$SalePrice),] %>% group_by(MasVnrType) %>% summarise(median = median(SalePrice), counts=n()) %>% arrange(median)
 ```
-
-There seems to be a significant difference between "common brick/none" and the other types. I assume that simple stones and for instance wooden houses are just cheaper. I will make the ordinality accordingly.
 
-```{r}
-Masonry <- c('None'=0, 'BrkCmn'=0, 'BrkFace'=1, 'Stone'=2)
-all$MasVnrType<-as.integer(revalue(all$MasVnrType, Masonry))
-table(all$MasVnrType)
-```
+We can see that the most common property types are Apartments, Houses, Condominiums, and service apartments. There are a total of 31 kinds of properties out of which only the first 4 account for a major chunk of them. So, we will select Apartments, Houses, Condominiums, and Serviced Apartments, and then group all the other property types into a single one "Other". We will store this new grouping of properties in our prop_type_simplified attribute. 
 
-**MasVnrArea: Masonry veneer area in square feet**
+Most common property types
+``` {r}
+# Create a new variable prop_type_simplified containing Apartments, Houses, Condominiums, Serviced Apartments, and Others
+listings <- listings %>%
+  mutate(prop_type_simplified = case_when(
+    property_type %in% c("Apartment","House", "Condominium","Serviced apartment") ~ property_type, 
+    TRUE ~ "Other"
+  ))
 
-An integer variable.
-```{r}
-all$MasVnrArea[is.na(all$MasVnrArea)] <-0
 ```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### MS Zoning
 
-**MSZoning: Identifies the general zoning classification of the sale**
+Now, let's check if we did this correctly. 
 
-4 NAs. Values are categorical.
-
-       A	Agriculture
-       C	Commercial
-       FV	Floating Village Residential
-       I	Industrial
-       RH	Residential High Density
-       RL	Residential Low Density
-       RP	Residential Low Density Park 
-       RM	Residential Medium Density
-
-```{r}
-#imputing the mode
-all$MSZoning[is.na(all$MSZoning)] <- names(sort(-table(all$MSZoning)))[1]
-all$MSZoning <- as.factor(all$MSZoning)
-table(all$MSZoning)
-sum(table(all$MSZoning))
+``` {r}
+# Checking for correct implementation
+listings %>%
+  count(property_type, prop_type_simplified) %>%
+  arrange(desc(n))        
 ```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
 
-### Kitchen variables
+We can see that everything is perfect. Now let's look at the minimum nights attribute. 
 
-**Kitchen quality and numer of Kitchens above grade**
-
-Kitchen quality has 1 NA. Number of Kitchens is complete.
-
-**Kitchen quality**
-
-1NA. Can be made ordinal with the qualities vector.
-
-       Ex	Excellent
-       Gd	Good
-       TA	Typical/Average
-       Fa	Fair
-       Po	Poor
- 
-```{r, message=FALSE}
-all$KitchenQual[is.na(all$KitchenQual)] <- 'TA' #replace with most common value
-all$KitchenQual<-as.integer(revalue(all$KitchenQual, Qualities))
-table(all$KitchenQual)
-sum(table(all$KitchenQual))
+``` {r}
+# Counting the different unique minimum nights in our dataset
+listings %>% 
+  count(minimum_nights) %>% 
+  arrange(desc(n))
 ```
 
-**Number of Kitchens above grade**
+The most common value in minimum nights is 1. Among, the most frequent minimum_nights, the most uncanny occurence is 30 minimum nights. We believe that this number probably corresponds to the fact that some properties are only available to rent per month. However, since we are only going for 4 nights, we will filter out those properties that minimum nights <= 4.
 
-An integer variable with no NAs.
-```{r}
-table(all$KitchenAbvGr)
-sum(table(all$KitchenAbvGr))
+``` {r}
+# Filtering for minimum nights <= 4 since our vacation is only 4 days. 
+listings <- listings %>% 
+  filter(minimum_nights <= 4)
+dim(listings)
 ```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Utilities
 
-**Utilities: Type of utilities available**
+There are a few columns that only contain null values in our dataset. Our next step is cleaning all of those columns from the dataset. 
 
-2 NAs. Ordinal as additional utilities is better.
-
-       AllPub	All public Utilities (E,G,W,& S)	
-       NoSewr	Electricity, Gas, and Water (Septic Tank)
-       NoSeWa	Electricity and Gas Only
-       ELO	Electricity only
-
-However, the table below shows that only one house does not have all public utilities. This house is in the train set. Therefore, imputing 'AllPub' for the NAs means that all houses in the test set will have 'AllPub'. This makes the variable useless for prediction. Consequently, I will get rid of it.
-
-```{r, message=FALSE}
-table(all$Utilities)
-kable(all[is.na(all$Utilities) | all$Utilities=='NoSeWa', 1:9])
-all$Utilities <- NULL
+``` {r}
+# Removing all of the null columns in our dataframe
+listings_cleaned <- listings
+a<- sapply(listings_cleaned, function(y) sum(length(which(is.na(y)))))
+listings_cleaned <- listings[,colSums(is.na(listings)) < nrow(listings)]
+length(listings_cleaned)
 ```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Home functionality
-
-**Functional: Home functionality**
-
-1NA. Can be made ordinal (salvage only is worst, typical is best).
 
-       Typ	Typical Functionality
-       Min1	Minor Deductions 1
-       Min2	Minor Deductions 2
-       Mod	Moderate Deductions
-       Maj1	Major Deductions 1
-       Maj2	Major Deductions 2
-       Sev	Severely Damaged
-       Sal	Salvage only
+Now that we cleaned all of the Null columns from the dataset, the next step is removing all of the URLs since we won't be needing them. 
 
-
-```{r, message=FALSE}
-#impute mode for the 1 NA
-all$Functional[is.na(all$Functional)] <- names(sort(-table(all$Functional)))[1]
-
-all$Functional <- as.integer(revalue(all$Functional, c('Sal'=0, 'Sev'=1, 'Maj2'=2, 'Maj1'=3, 'Mod'=4, 'Min2'=5, 'Min1'=6, 'Typ'=7)))
-table(all$Functional)
-sum(table(all$Functional))
+``` {r}
+# Removing all of the URL columns in the dataframes
+listings_cleaned[,names(listings_cleaned)[grep("url",names(listings_cleaned))]] <- NULL
+length(listings_cleaned)
 ```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-### Exterior variables
-
-**There are 4 exterior variables**
-
-2 variables have 1 NA, 2 variables have no NAs.
-
-**Exterior1st: Exterior covering on house**
-
-1 NA. Values are categorical.
 
-       AsbShng	Asbestos Shingles
-       AsphShn	Asphalt Shingles
-       BrkComm	Brick Common
-       BrkFace	Brick Face
-       CBlock	Cinder Block
-       CemntBd	Cement Board
-       HdBoard	Hard Board
-       ImStucc	Imitation Stucco
-       MetalSd	Metal Siding
-       Other	Other
-       Plywood	Plywood
-       PreCast	PreCast	
-       Stone	Stone
-       Stucco	Stucco
-       VinylSd	Vinyl Siding
-       Wd Sdng	Wood Siding
-       WdShing	Wood Shingles
+The host_response_time column still has some NA values that have been listed as N/A and we need to make sure they are formatted into the correct value The host acceptance rate is also in a string but we need to make sure that this is stored in numbers. 
 
-```{r}
-#imputing mode
-all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all$Exterior1st)))[1]
-
-all$Exterior1st <- as.factor(all$Exterior1st)
-table(all$Exterior1st)
-sum(table(all$Exterior1st))
-```
-
-**Exterior2nd: Exterior covering on house (if more than one material)**
-
-1 NA. Values are categorical.
-
-       AsbShng	Asbestos Shingles
-       AsphShn	Asphalt Shingles
-       BrkComm	Brick Common
-       BrkFace	Brick Face
-       CBlock	Cinder Block
-       CemntBd	Cement Board
-       HdBoard	Hard Board
-       ImStucc	Imitation Stucco
-       MetalSd	Metal Siding
-       Other	Other
-       Plywood	Plywood
-       PreCast	PreCast
-       Stone	Stone
-       Stucco	Stucco
-       VinylSd	Vinyl Siding
-       Wd Sdng	Wood Siding
-       WdShing	Wood Shingles
-
-```{r}
-#imputing mode
-all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(-table(all$Exterior2nd)))[1]
-
-all$Exterior2nd <- as.factor(all$Exterior2nd)
-table(all$Exterior2nd)
-sum(table(all$Exterior2nd))
+``` {r}
+# Making sure that the Host Acceptance Rate is a number 
+listings_cleaned$host_acceptance_rate <- listings_cleaned$host_acceptance_rate %>% 
+                      parse_number()
 ```
-
-**ExterQual: Evaluates the quality of the material on the exterior** 
 
-No NAs. Can be made ordinal using the Qualities vector.
+Deleting columns which have more than 70% null values:
+Though we have deleted columns which have all null values, we still have columns which have more then 70% of the null data in it. As these nulls will affect our analysis we have two options to overcome with these.
 
-       Ex	Excellent
-       Gd	Good
-       TA	Average/Typical
-       Fa	Fair
-       Po	Poor
-       
-```{r}
-all$ExterQual<-as.integer(revalue(all$ExterQual, Qualities))
-table(all$ExterQual)
-sum(table(all$ExterQual))
-```
+i. We can replace all nulls with the median, mean or mode if those columns are necessary.
 
-		
-**ExterCond: Evaluates the present condition of the material on the exterior**
+ii. We can simply delete these columns if they are not necessary.
 
-No NAs. Can be made ordinal using the Qualities vector.
+In our dataset exploration, these columns will not affect the analysis. So here we are choosing the second option to delete these columns.
 
-       Ex	Excellent
-       Gd	Good
-       TA	Average/Typical
-       Fa	Fair
-       Po	Poor
 
-```{r}
-all$ExterCond<-as.integer(revalue(all$ExterCond, Qualities))
-table(all$ExterCond)
-sum(table(all$ExterCond))
+``` {r}
+# Deleting all of the columns that have more than 70% NULL values
+total <- nrow(listings_cleaned)
+b <-  round(total * 0.7)
+listings_cleaned <- listings_cleaned[,colSums(is.na(listings_cleaned)) < b]
+length(listings_cleaned)
 ```
-
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
-
-###Electrical system
 
-**Electrical: Electrical system**
-
-1 NA. Values are categorical.
-
-       SBrkr	Standard Circuit Breakers & Romex
-       FuseA	Fuse Box over 60 AMP and all Romex wiring (Average)	
-       FuseF	60 AMP Fuse Box and mostly Romex wiring (Fair)
-       FuseP	60 AMP Fuse Box and mostly knob & tube wiring (poor)
-       Mix	Mixed
-
-```{r}
-#imputing mode
-all$Electrical[is.na(all$Electrical)] <- names(sort(-table(all$Electrical)))[1]
+Redundant Columns 
+There might be columns which will provide same information. As this leads to data redundancy we have to delete these columns.
 
-all$Electrical <- as.factor(all$Electrical)
-table(all$Electrical)
-sum(table(all$Electrical))
+``` {r}
+# Removing all of the redundant columns
+listings_cleaned[,names(listings_cleaned[(duplicated(t(listings_cleaned)))])] <- NULL
 ```
 
-** Please return to the 5.2 Tabs menu to select other (groups of) variables**
+Converting few columns to factor: 
+Using as.factor(), we will convert a few attributes into factors for faster access. 
 
-###Sale Type and Condition
-
-**SaleType: Type of sale**
-
-1 NA. Values are categorical.
-
-       WD 	Warranty Deed - Conventional
-       CWD	Warranty Deed - Cash
-       VWD	Warranty Deed - VA Loan
-       New	Home just constructed and sold
-       COD	Court Officer Deed/Estate
-       Con	Contract 15% Down payment regular terms
-       ConLw	Contract Low Down payment and low interest
-       ConLI	Contract Low Interest
-       ConLD	Contract Low Down
-       Oth	Other
-
-```{r}
-#imputing mode
-all$SaleType[is.na(all$SaleType)] <- names(sort(-table(all$SaleType)))[1]
-
-all$SaleType <- as.factor(all$SaleType)
-table(all$SaleType)
-sum(table(all$SaleType))
+``` {r}
+# Changing all of the listed variables into factors
+listings_cleaned$host_response_time <- as.factor(listings_cleaned$host_response_time)
+listings_cleaned$host_is_superhost <- as.factor(listings_cleaned$host_is_superhost)
+listings_cleaned$host_identity_verified <- as.factor(listings_cleaned$host_identity_verified)
+listings_cleaned$neighbourhood_cleansed <- as.factor(listings_cleaned$neighbourhood_cleansed)
+listings_cleaned$is_location_exact <- as.factor(listings_cleaned$is_location_exact)
+listings_cleaned$property_type <- as.factor(listings_cleaned$property_type)
+listings_cleaned$room_type <- as.factor(listings_cleaned$room_type)
+listings_cleaned$bed_type <- as.factor(listings_cleaned$bed_type)
+listings_cleaned$calendar_updated <- as.factor(listings_cleaned$calendar_updated)
+listings_cleaned$instant_bookable <- as.factor(listings_cleaned$instant_bookable)
+listings_cleaned$cancellation_policy<- as.factor(listings_cleaned$cancellation_policy)
 ```
-
-**SaleCondition: Condition of sale**
 
-No NAs. Values are categorical.
+We will drop the columns scrape_id, state, country_code, and country from our listings dataframe because all of the observations in our dataset should have the same value for all of these attributes. 
 
-       Normal	Normal Sale
-       Abnorml	Abnormal Sale -  trade, foreclosure, short sale
-       AdjLand	Adjoining Land Purchase
-       Alloca	Allocation - two linked properties with separate deeds, typically condo with a garage unit	
-       Family	Sale between family members
-       Partial	Home was not completed when last assessed (associated with New Homes)
-
-```{r}
-all$SaleCondition <- as.factor(all$SaleCondition)
-table(all$SaleCondition)
-sum(table(all$SaleCondition))
+``` {r}
+# Checking for the unique "scrape_id"s
+unique(listings["scrape_id"])
+# Checking for the unique states
+unique(listings["state"])
+# Checking for the unique country codes 
+unique(listings["country_code"])
+# Checking for unique country codes
+unique(listings["country"])
 ```
 
-**Please return to the 5.2 Tabs menu to select other (groups of) variables**
+We can clearly see that these attributes only contain 1 value for all the attributions (except for the state column). The state column seems to contain meaningless values so we will not be inputting this into our final listings dataset. 
 
-##Label encoding/factorizing the remaining character variables {.tabset}
+At this point, we still have far too many attributes so we are just going to select the attributes that we want to keep and store them in the final_listings dataframe. 
 
-At this point, I have made sure that all variables with NAs are taken care of. However, I still need to also take care of the remaining character variables that without missing values. Similar to the previous section, I have created Tabs for groups of variables.
+``` {r}
+# Selecting all of the necessary attributes
+final_listings <- listings_cleaned[, c("price", 
+                                       "cleaning_fee", 
+                                       "extra_people", 
+                                       "property_type", 
+                                       "number_of_reviews", 
+                                       "review_scores_rating",
+                                       "host_response_time", 
+                                       "longitude", "latitude", 
+                                       "neighbourhood", 
+                                       "neighbourhood_cleansed", 
+                                       "host_is_superhost", 
+                                       "host_acceptance_rate", 
+                                       "minimum_nights", 
+                                       "prop_type_simplified", 
+                                       "room_type", 
+                                       "guests_included", 
+                                       "has_availability", 
+                                       "last_review", 
+                                       "availability_365", 
+                                       "amenities", 
+                                       "is_location_exact", 
+                                       "bathrooms", 
+                                       "bedrooms", 
+                                       "cancellation_policy", 
+                                       "accommodates", 
+                                       "instant_bookable", 
+                                       "availability_90", 
+                                       "availability_30")]
+
+# Making sure that all of the NAs are detected in the host_response_time and reviews_scores_rating attributes
+final_listings$host_response_time <- final_listings$host_response_time %>% 
+                      na_if("N/A")
+final_listings$host_response_time <- final_listings$host_response_time %>% 
+                      is.na()
+
+final_listings$review_scores_rating <- final_listings$review_scores_rating %>% 
+                      na_if("N/A")
+
+final_listings <- final_listings %>% 
+  filter(review_scores_rating >0 | host_response_time !=0)
+
+```
+
+Identifying outliers in price column
+To identify the outliers in the price column, we have plotted the distribution of price. In the below plot, we can see that there few houses which have price 0. These erroneous values probably come from the user entering wrong valuesi into the dataset.
+
+``` {r outliers, fig_width=15, fig_height = 10}
+
+# Plotting the price histogram
+ggplot(final_listings, aes(price)) +
+  geom_histogram(bins = 30, aes(y = ..density..), fill = "navy") +
+  # Creating a density Plot
+  geom_density(alpha = 0.2, fill = "purple") +
+  # Using the theme stored above in th
+  th +
+  # Labelling the plot
+  ggtitle("Distribution of price",
+          subtitle = "The distribution is very skewed") +
+  xlab("Price")+
+  ylab("Density")+
+  geom_vline(xintercept = round(mean(final_listings$price), 2), size = 2, linetype = 3)
 
-```{r}
-Charcol <- names(all[,sapply(all, is.character)])
-Charcol
-cat('There are', length(Charcol), 'remaining columns with character values')
 ```
 
-### Foundation
+We can clearly see that this plot starts from zero and the distribution is positively skewed. We will remove all of the observations where the value of the price is zero. 
 
-**Foundation: Type of foundation**
-
-        BrkTil          Brick & Tile
-        CBlock	        Cinder Block
-        PConc	        Poured Contrete	
-        Slab	        Slab
-        Stone	        Stone
-        Wood	        Wood
-
-```{r}
-#No ordinality, so converting into factors
-all$Foundation <- as.factor(all$Foundation)
-table(all$Foundation)
-sum(table(all$Foundation))
-```
-
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
-
-### Heating and airco
-
-There are 2 heating variables, and one that indicates Airco Yes/No.
-
-**Heating: Type of heating**
-		
-       Floor	Floor Furnace
-       GasA	Gas forced warm air furnace
-       GasW	Gas hot water or steam heat
-       Grav	Gravity furnace	
-       OthW	Hot water or steam heat other than gas
-       Wall	Wall furnace
-       
-```{r}
-#No ordinality, so converting into factors
-all$Heating <- as.factor(all$Heating)
-table(all$Heating)
-sum(table(all$Heating))
-```
-
-**HeatingQC: Heating quality and condition**
-
-       Ex	Excellent
-       Gd	Good
-       TA	Average/Typical
-       Fa	Fair
-       Po	Poor
-       
-```{r}
-#making the variable ordinal using the Qualities vector
-all$HeatingQC<-as.integer(revalue(all$HeatingQC, Qualities))
-table(all$HeatingQC)
-sum(table(all$HeatingQC))
+``` {r}
+# Filtering for all observations where the price is zero and removing those observations
+final_listings <- final_listings %>%  
+  filter(price>0)
 ```
 
-**CentralAir: Central air conditioning**
+Using regular expressions (we will use grep later), we will be creating new logical attributes for tv, wifi, and internet from the amenities attribute. 
 
-       N	No
-       Y	Yes
-
-```{r}
-all$CentralAir<-as.integer(revalue(all$CentralAir, c('N'=0, 'Y'=1)))
-table(all$CentralAir)
-sum(table(all$CentralAir))
+``` {r}
+final_listings <- final_listings %>% 
+  # Using regex to find TV in amenities
+  mutate(has_tv = str_detect(final_listings$amenities, regex("TV", ignore_case = TRUE))) %>% 
+  # Using regex to find WiFi in amenities
+  mutate(has_wifi = str_detect(final_listings$amenities, regex("WiFi", ignore_case = TRUE))) %>% 
+  # Using regex to find Internet in amenities
+  mutate(has_internet = str_detect(final_listings$amenities, regex("Internet", ignore_case = TRUE)))
 ```
-
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
-       
-###Roof
-
-There are 2 variables that deal with the roof of houses.
-
-**RoofStyle: Type of roof**
-
-       Flat	Flat
-       Gable	Gable
-       Gambrel	Gabrel (Barn)
-       Hip	Hip
-       Mansard	Mansard
-       Shed	Shed
 
-```{r}
-#No ordinality, so converting into factors
-all$RoofStyle <- as.factor(all$RoofStyle)
-table(all$RoofStyle)
-sum(table(all$RoofStyle))
-```
-		
-**RoofMatl: Roof material**
-
-       ClyTile	Clay or Tile
-       CompShg	Standard (Composite) Shingle
-       Membran	Membrane
-       Metal	Metal
-       Roll	Roll
-       Tar&Grv	Gravel & Tar
-       WdShake	Wood Shakes
-       WdShngl	Wood Shingles
+Now, let's try to use grep to create variables for has_gym incidcating whether there is a gym, has_pool if there is a pool, has_parking if there is a parking, has_private_entrance if there is a private entry, and has_balcony if there is a balcony. 
 
-```{r}
-#No ordinality, so converting into factors
-all$RoofMatl <- as.factor(all$RoofMatl)
-table(all$RoofMatl)
-sum(table(all$RoofMatl))
+``` {r}
+final_listings <- final_listings %>% 
+    # Using grep to find if the property contains a pool
+  mutate(has_pool = case_when(
+    grepl("Pool", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    # Using grep to find if the property contains a gym
+    has_gym = case_when(
+    grepl("Gym", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    # Using grep to find if the property contains parking
+    has_parking = case_when(
+    grepl("Parking", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE), 
+    # Using grep to find if the property contains private entrance
+    has_private_entrance = case_when(
+    grepl("Private entrance", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+    # Using grep to find if the property contains a balcony
+    has_balcony = case_when(
+    grepl("balcony", amenities, fixed = TRUE) ~ TRUE,
+    TRUE ~ FALSE),
+  )
 ```
 
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
-       
-###Land
+We had three neighbourhood attributes in our listings original dataset: the neighbourhood attribute, the neighbourhood_cleansed attribute and the neighbourhood_groups attribute. The third attribute was unfortunately useless to us since it contained 99.7% missing values and we had to drop it. Now, the neighbourhood attribute and the neighbourhood_cleansed dataset contain too many different kinds of values. What we want to do is use our city knowledge and understanding to group together different neighbourhoods into the same group. Our objective is to create 6 regions from all of these neighbourhoods, the 6 regions that we will create are: Schwabing, Bogenhausen, Haidhausen, Altstadt, Sendling, and Neuhausen-Nymphenburg-Laim.
 
-2 variables that specify the flatness and slope of the propoerty.
+``` {r regions renamed}
 
-**LandContour: Flatness of the property**
+# Filtering the neighbourhoods into 6 groups
+final_listings <- final_listings %>% 
+  mutate(neighbourhood_cleansed= case_when(
+      neighbourhood_cleansed=="Schwabing-Freimann"~"Schwabing",
+      neighbourhood_cleansed=="Schwabing-West"~"Schwabing",
+      neighbourhood_cleansed=="Milbertshofen-Am Hart"~"Schwabing",
+      neighbourhood_cleansed=="Bogenhausen"~"Bogenhausen",
+      neighbourhood_cleansed=="Tudering-Riem"~"Bogenhausen",
+      neighbourhood_cleansed=="Berg am Laim"~"Bogenhausen",
+      neighbourhood_cleansed=="Au-Haidhausen"~"Haidhausen",
+      neighbourhood_cleansed=="Ramersdorf-Perlach"~"Haidhausen",
+      neighbourhood_cleansed=="Obergiesing"~"Haidhausen",
+      neighbourhood_cleansed=="Untergiesing-Harlaching"~"Haidhausen",
+      neighbourhood_cleansed=="Ludwigsvorstadt-Isarvorstadt"~"Altstadt",
+      neighbourhood_cleansed=="Thalkirchen-Obersendling-Forstenried-Fürstenried-Solln"~"Sendling",
+      neighbourhood_cleansed=="Sendling-Westpark"~"Sendling",
+      neighbourhood_cleansed=="Sendling"~"Sendling",
+      neighbourhood_cleansed=="Hadern"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Laim"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Pasing-Obermenzing"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Aubing-Lochhausen-Langwied"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Neuhausen-Nymphenburg"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Moosach"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Feldmoching-Hasenbergl"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Allach-Untermenzing"~"Neuhausen-Nymphenburg-Laim",
+      neighbourhood_cleansed=="Schwanthalerhöhe"~"Altstadt",
+      neighbourhood_cleansed=="Maxvorstadt"~"Altstadt",
+      neighbourhood_cleansed=="Altstadt-Lehel"~"Altstadt"
+      )) 
 
-       Lvl	Near Flat/Level	
-       Bnk	Banked - Quick and significant rise from street grade to building
-       HLS	Hillside - Significant slope from side to side
-       Low	Depression
+final_listings
 
-```{r}
-#No ordinality, so converting into factors
-all$LandContour <- as.factor(all$LandContour)
-table(all$LandContour)
-sum(table(all$LandContour))
-```
-       
-**LandSlope: Slope of property**
-		
-       Gtl	Gentle slope
-       Mod	Moderate Slope	
-       Sev	Severe Slope
+# Checking for all the new final neighbourhoods and their counts
+final_listings %>%
+   count(neighbourhood_cleansed) %>%
+   arrange(desc(n))
 
-```{r}
-#Ordinal, so label encoding
-all$LandSlope<-as.integer(revalue(all$LandSlope, c('Sev'=0, 'Mod'=1, 'Gtl'=2)))
-table(all$LandSlope)
-sum(table(all$LandSlope))
 ```
 
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+Time to start with our EDA! :D 
 
-### Dwelling
 
-2 variables that specify the type and style of dwelling.
 
-**BldgType: Type of dwelling**
-		
-       1Fam	Single-family Detached	
-       2FmCon	Two-family Conversion; originally built as one-family dwelling
-       Duplx	Duplex
-       TwnhsE	Townhouse End Unit
-       TwnhsI	Townhouse Inside Unit
+# Exploratory Data Analysis (EDA)
 
-This seems ordinal to me (single family detached=best). Let's check it with visualization.
 
-```{r}
-ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(BldgType), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue')+
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..))
-```
 
-However, the visualization does not show ordinality.
+Now that our dataset is cleaned, we can start our Exploratory Data Analysis (EDA). The purpose of this section is to explore the data, develop an understanding of its components and generate relevant questions for our analysis. 
 
-```{r}
-#No ordinality, so converting into factors
-all$BldgType <- as.factor(all$BldgType)
-table(all$BldgType)
-sum(table(all$BldgType))
-```
-	
-**HouseStyle: Style of dwelling**
-	
-       1Story	One story
-       1.5Fin	One and one-half story: 2nd level finished
-       1.5Unf	One and one-half story: 2nd level unfinished
-       2Story	Two story
-       2.5Fin	Two and one-half story: 2nd level finished
-       2.5Unf	Two and one-half story: 2nd level unfinished
-       SFoyer	Split Foyer
-       SLvl	Split Level
+It appears that our dataset has 24 variables and  9,376 observations.The dataset is composed of 11 numerical variables, 5 factors ,3 characters, 4 logical and 1 data variable. 
 
-```{r}
-#No ordinality, so converting into factors
-all$HouseStyle <- as.factor(all$HouseStyle)
-table(all$HouseStyle)
-sum(table(all$HouseStyle))
-```
-
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
-
-###Neighborhood and Conditions
-
-3 variables that specify the physical location, and the proximity of 'conditions'.
-
-**Neighborhood: Physical locations within Ames city limits**
-
-Note: as the number of levels is really high, I will look into binning later on.
-
-       Blmngtn	Bloomington Heights
-       Blueste	Bluestem
-       BrDale	Briardale
-       BrkSide	Brookside
-       ClearCr	Clear Creek
-       CollgCr	College Creek
-       Crawfor	Crawford
-       Edwards	Edwards
-       Gilbert	Gilbert
-       IDOTRR	Iowa DOT and Rail Road
-       MeadowV	Meadow Village
-       Mitchel	Mitchell
-       Names	North Ames
-       NoRidge	Northridge
-       NPkVill	Northpark Villa
-       NridgHt	Northridge Heights
-       NWAmes	Northwest Ames
-       OldTown	Old Town
-       SWISU	South & West of Iowa State University
-       Sawyer	Sawyer
-       SawyerW	Sawyer West
-       Somerst	Somerset
-       StoneBr	Stone Brook
-       Timber	Timberland
-       Veenker	Veenker
+Nevertheless, just a global view of the data frame is not enough to get an accurate understanding of our database, hence we will calculate some basic descriptive statistics for the variables of interest.
 
-```{r}
-#No ordinality, so converting into factors
-all$Neighborhood <- as.factor(all$Neighborhood)
-table(all$Neighborhood)
-sum(table(all$Neighborhood))
-```
-
-**Condition1: Proximity to various conditions**
-	
-       Artery	Adjacent to arterial street
-       Feedr	Adjacent to feeder street	
-       Norm	Normal	
-       RRNn	Within 200' of North-South Railroad
-       RRAn	Adjacent to North-South Railroad
-       PosN	Near positive off-site feature--park, greenbelt, etc.
-       PosA	Adjacent to postive off-site feature
-       RRNe	Within 200' of East-West Railroad
-       RRAe	Adjacent to East-West Railroad
+## Summary statistics of the variables of interest
 
-```{r}
-#No ordinality, so converting into factors
-all$Condition1 <- as.factor(all$Condition1)
-table(all$Condition1)
-sum(table(all$Condition1))
-```
-	
-**Condition2: Proximity to various conditions (if more than one is present)**
-		
-       Artery	Adjacent to arterial street
-       Feedr	Adjacent to feeder street	
-       Norm	Normal	
-       RRNn	Within 200' of North-South Railroad
-       RRAn	Adjacent to North-South Railroad
-       PosN	Near positive off-site feature--park, greenbelt, etc.
-       PosA	Adjacent to postive off-site feature
-       RRNe	Within 200' of East-West Railroad
-       RRAe	Adjacent to East-West Railroad
+The function 'favstats' allows to quickly gain some information on the central tendency and variability of our variables of interest. 
+``` {r EDA favstats}
+  favstats(price~host_is_superhost, data=final_listings)
+  #mosaic package allows to obtain summary statistics for the variables of interest
+  #basically, we see how price is distributed among values that variables of interest take
+  favstats(price~room_type, data=final_listings) 
+  favstats(price~minimum_nights, data=final_listings) 
+  favstats(price~prop_type_simplified, data=final_listings)
+  favstats(price~neighbourhood_cleansed, data=final_listings)
 
-```{r}
-#No ordinality, so converting into factors
-all$Condition2 <- as.factor(all$Condition2)
-table(all$Condition2)
-sum(table(all$Condition2))
 ```
 
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+From this analysis, a few figures are particularly informative. For instance, we learn that over 97% Airbnb offers in Munich are Entire Home/apartment and Private room, leaving a very small shares of Hotel and Shared Rooms. Most property types available are apartments, with very few house or condominium offering. Moreover, around 80% of all offers have 1 or 2 minimum night policy, and average cleaning fees are 19.21€. Finally, the neighborhood with the largest Airbnb supply is Altstadt, which is situated in the old city center of Munich, therefore very close to most touristic activities. 
 
-### Pavement of Street & Driveway
+Let us dig a bit deeper on each several variables to more understanding of the reason underlying the variations in price. Besides checking the price distribution within a variable, it is also useful to see what particular range of values some variables take in order to build correct understanding of the data set.
 
-2 variables
-       
-**Street: Type of road access to property**
 
-       Grvl	Gravel	
-       Pave	Paved
 
-```{r}
-#Ordinal, so label encoding
-all$Street<-as.integer(revalue(all$Street, c('Grvl'=0, 'Pave'=1)))
-table(all$Street)
-sum(table(all$Street))
-```
-       
-**PavedDrive: Paved driveway**
+### Price 
 
-       Y	Paved 
-       P	Partial Pavement
-       N	Dirt/Gravel
+Let us start with a quick overview of the price variable. Here we can observe that the minimum price for a night in Airbnb is 9€, while the highest price is 999€. The average price for an accomodation on Airbnb in Munich is of 113.19€.  
 
-```{r}
-#Ordinal, so label encoding
-all$PavedDrive<-as.integer(revalue(all$PavedDrive, c('N'=0, 'P'=1, 'Y'=2)))
-table(all$PavedDrive)
-sum(table(all$PavedDrive))
+``` {r EDA price variability}
+glue("Minimum Price : {min(final_listings$price)} 
+     | Mean Longitude: {round(mean(final_listings$price), digits=2)} 
+     | Maximum Price: {max(final_listings$price)}")
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+#function round allows to round the values for more comprehensible representation
 ```
 
-**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+Let us dive a bit deeper in the variation of price analysis. The below graph allows us to observe the frequency of price for Airbnb in Munich. As we can see, the graph is right skewed, with the majority of observation around the mean of 113.19€. 
 
-## Changing some numeric variables into factors
+``` {r  EDA price plot}
+#choosing dataset and frawing a plot
+ggplot(data = final_listings, 
+       mapping = aes(x = price)) + 
+      #setting variable for which we want to check the distribution
+         geom_histogram(fill = "navy", #choosing graph style
+                        bins = 50, 
+                        size = 0.8, 
+                        color = "black") +
+       #adding histogram style
+         ylab("Frequency") + #y-axis label
+         xlab("Price (in €)") + #x-axis label
+         labs(title = "Airbnb prices in Munich are right-skewed ", 
+              #setting graph title
+              subtitle = "Frenquency of price for an accomodation in Munich")+
+          #setting the chart style
+          theme_bw()
 
-At this point, all variables are complete (No NAs), and all character variables are converted into either numeric labels of into factors. However, there are 3 variables that are recorded numeric but should actually be categorical.
-
-### Year and Month Sold
-
-While oridinality within YearBuilt (or remodeled) makes sense (old houses are worth less), we are talking about only 5 years of sales. These years also include an economic crisis. For instance: Sale Prices in 2009 (after the collapse) are very likely to be much lower than in 2007. I wil convert YrSold into a factor before modeling, but as I need the numeric version of YrSold to create an Age variable, I am not doing that yet.
-
-Month Sold is also an Integer variable. However, December is not "better" than January. Therefore, I will convert MoSold values back into factors.
-
-```{r}
-str(all$YrSold)
-str(all$MoSold)
-all$MoSold <- as.factor(all$MoSold)
 ```
-
-Although possible a bit less steep than expected, the effects of the Banking crises that took place at the end of 2007 can be seen indeed. After the highest median prices in 2007, the prices gradually decreased. However, seasonality seems to play a bigger role, as you can see below.
-
-```{r}
-ys <- ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(YrSold), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue')+
-        scale_y_continuous(breaks= seq(0, 800000, by=25000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..)) +
-        coord_cartesian(ylim = c(0, 200000)) +
-        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
-
-ms <- ggplot(all[!is.na(all$SalePrice),], aes(x=MoSold, y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue')+
-        scale_y_continuous(breaks= seq(0, 800000, by=25000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..)) +
-        coord_cartesian(ylim = c(0, 200000)) +
-        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
-
-grid.arrange(ys, ms, widths=c(1,2))
-```
-
-### MSSubClass
-
-MSSubClass: Identifies the type of dwelling involved in the sale.	
-
-        20	1-STORY 1946 & NEWER ALL STYLES
-        30	1-STORY 1945 & OLDER
-        40	1-STORY W/FINISHED ATTIC ALL AGES
-        45	1-1/2 STORY - UNFINISHED ALL AGES
-        50	1-1/2 STORY FINISHED ALL AGES
-        60	2-STORY 1946 & NEWER
-        70	2-STORY 1945 & OLDER
-        75	2-1/2 STORY ALL AGES
-        80	SPLIT OR MULTI-LEVEL
-        85	SPLIT FOYER
-        90	DUPLEX - ALL STYLES AND AGES
-       120	1-STORY PUD (Planned Unit Development) - 1946 & NEWER
-       150	1-1/2 STORY PUD - ALL AGES
-       160	2-STORY PUD - 1946 & NEWER
-       180	PUD - MULTILEVEL - INCL SPLIT LEV/FOYER
-       190	2 FAMILY CONVERSION - ALL STYLES AND AGES
-
-These classes are coded as numbers, but really are categories.
 
-```{r}
-str(all$MSSubClass)
 
-all$MSSubClass <- as.factor(all$MSSubClass)
+### Cleaning Fee
 
-#revalue for better readability
-all$MSSubClass<-revalue(all$MSSubClass, c('20'='1 story 1946+', '30'='1 story 1945-', '40'='1 story unf attic', '45'='1,5 story unf', '50'='1,5 story fin', '60'='2 story 1946+', '70'='2 story 1945-', '75'='2,5 story all ages', '80'='split/multi level', '85'='split foyer', '90'='duplex all style/age', '120'='1 story PUD 1946+', '150'='1,5 story PUD all', '160'='2 story PUD 1946+', '180'='PUD multilevel', '190'='2 family conversion'))
+Let us now study the cleaning fees, which are the main price addition imposed to customers. 
+This table reporting the central tendency of Cleaning fees allows to see that the variable is skewed to the right as median is far closer to the minimum value as compared to maximum. Also, we can see that the average cleaning fee is of 19.21$. 
 
-str(all$MSSubClass)
+``` {r EDA cleaning fee}
+glue("Mean Cleaning Fee: {round(mean(final_listings$cleaning_fee),2)} #showing mean
+     | Minimum Cleaning Fee: {min(final_listings$cleaning_fee)} #showing min
+     | Median Cleaning Fee: {median(final_listings$cleaning_fee)} #showing median
+     | Maximum Cleaning Fee: {max(final_listings$cleaning_fee)}") #showing max
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+#function round allows to round the values for more comprehensible representation
 ```
 
-# Visualization of important variables
+Let us plot a graph to observe the frequency of observation for cleaning fees. Due to the  outliers present in our dataset, we will filter the graph to show us only the cleaning fees under 100€. Quite interestingly, the graph shows us that a high number of accomodation do not charge any cleaning fee. The cleaning fees are then distributed evenly between 1€ and 50€ approximately.  
 
-I have now finally reached the point where all character variables have been converted into categorical factors or have been label encoded into numbers. In addition, 3 numeric variables have been converted into factors, and I deleted one variable (Utilities). As you can see below, the number of numerical variables is now 56 (including the response variable), and the remaining 23 variables are categorical.
-
-```{r}
-numericVars <- which(sapply(all, is.numeric)) #index vector numeric variables
-factorVars <- which(sapply(all, is.factor)) #index vector factor variables
-cat('There are', length(numericVars), 'numeric variables, and', length(factorVars), 'categoric variables')
+``` {r EDA cleaning fee plot}
+#creating new dataset
+clean_fee <- data.frame(
+  cleaning_fee = final_listings["cleaning_fee"][final_listings["cleaning_fee"] <= 100])
+#choosing the cleaning fee cases such that it is below or equal to 100
+  ggplot(data = clean_fee, #basic plot
+       mapping = aes(x = cleaning_fee)) +
+    #choosing x variable for which we show distribution
+         geom_histogram( #choosing graph type
+           fill = "navy", 
+           bins = 50, 
+           size = 0.8, 
+           color = "black") +
+         #adding histogram style
+         theme_bw() + 
+        #choosing theme
+         ylab("Frequency") + #y-axis label
+         xlab("Cleaning Fee (in €)") + #x-axis label
+         labs(title = "How high are the cleaning fees ?", 
+              #adding the title
+              subtitle = "Cleaning Fees histogram")
+              #adding the subtitle
 ```
 
-##Correlations again
 
-Below I am checking the correlations again. As you can see, the number of variables with a correlation of at least 0.5 with the SalePrice has increased from 10 (see section 4.2.1) to 16. 
+### Number of Events
 
-```{r, out.width="100%"}
-all_numVar <- all[, numericVars]
-cor_numVar <- cor(all_numVar, use="pairwise.complete.obs") #correlations of all numeric variables
+Similary to cleaning fees, the number of reviews has some very high outliers, as the difference between the median and the maximum value is very consistent. The median of 4 reviews per Airbnb offering indicates that the maximum presented below is probably an outlier, 688 being a very large number for a single accomodation. The average number of reviews is of 16.73. 
 
-#sort on decreasing correlations with SalePrice
-cor_sorted <- as.matrix(sort(cor_numVar[,'SalePrice'], decreasing = TRUE))
- #select only high corelations
-CorHigh <- names(which(apply(cor_sorted, 1, function(x) abs(x)>0.5)))
-cor_numVar <- cor_numVar[CorHigh, CorHigh]
-
-corrplot.mixed(cor_numVar, tl.col="black", tl.pos = "lt", tl.cex = 0.7,cl.cex = .7, number.cex=.7)
+``` {r EDA number of reviews}
+glue("Minimum Number of Reviews: {min(final_listings$number_of_reviews)} 
+     | Median Number of Reviews: {round(median(final_listings$number_of_reviews), digits=2)} 
+     |  Mean Number of Reviews: {round(mean(final_listings$number_of_reviews), digits=2)} 
+     |Maximum Number of Reviews: {max(final_listings$number_of_reviews)}")
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
+#function round allows to round the values for more comprehensible representation
 ```
 
-## Finding variable importance with a quick Random Forest
 
-Although the correlations are giving a good overview of the most important numeric variables and multicolinerity among those variables, I wanted to get an overview of the most important variables including the categorical variables before moving on to visualization.
+The following graph allows us to look at the distribution of number of reviews (filtered for less than 50 reviews, to eliminate outliers). The graph is right skewed, with most number of reviews being between 0 and 10. 
+Let us now have a look at the average review score. 
 
-I tried to get the relative importance of variables with a quick linear regression model with the calc.relimp function of package , and also tried the boruta function of package boruta which separates the variables into groups that are important or not. However, these method took a long time. As I only want to get an indication of the variable importance, I eventually decided to keep it simple and just use a quick and dirty Random Forest model with only 100 trees. This also does the job for me, and does not take very long as I can specify a (relatively) small number of trees.
 
-```{r}
-set.seed(2018)
-quick_RF <- randomForest(x=all[1:1460,-79], y=all$SalePrice[1:1460], ntree=100,importance=TRUE)
-imp_RF <- importance(quick_RF)
-imp_DF <- data.frame(Variables = row.names(imp_RF), MSE = imp_RF[,1])
-imp_DF <- imp_DF[order(imp_DF$MSE, decreasing = TRUE),]
 
-ggplot(imp_DF[1:20,], aes(x=reorder(Variables, MSE), y=MSE, fill=MSE)) + geom_bar(stat = 'identity') + labs(x = 'Variables', y= '% increase MSE if variable is randomly permuted') + coord_flip() + theme(legend.position="none")
+``` {r  EDA number reviews}
+#creating new dataset
+reviews <- data.frame(
+  number_of_reviews = final_listings["number_of_reviews"][final_listings["number_of_reviews"] <= 50])
+#choosing the cases where bumber of reviews is below or equal to 50
+  ggplot(data = reviews, #drawing a plot
+       mapping = aes(x = number_of_reviews)) +
+    #choosing variable for which we build distribution
+         geom_histogram( #choosing graph type
+           fill = "navy", 
+           bins = 50, 
+           size = 0.8, 
+           color = "black") +
+    #adding some style for the histogram
+         theme_bw() +
+    #choosing theme
+         ylab("Frequency") + #y-axis label
+         xlab("Number of Reviews") + #x-axis label
+         labs(title="Distribution of number of reviews appears to be right-skewed",
+              #adding title to the graph
+              subtitle = "Number of Reviews Histogram")
+              #adding subtitle
 ```
-
-Only 3 of those most important variables are categorical according to RF; Neighborhood, MSSubClass, and GarageType. 
-
-### Above Ground Living Area, and other surface related variables (in square feet)
 
-As I have already visualized the relation between the Above Ground Living Area and SalePrice in my initial explorations, I will now just display the distribution itself. As there are more 'square feet' surface measurements in the Top 20, I am taking the opportunity to bundle them in this section. Note: GarageArea is taken care of in the Garage variables section.
 
-I am also adding 'Total Rooms Above Ground' (TotRmsAbvGrd) as this variable is highly correlated with the Above Ground Living Area(0.81).
+### Reviews
 
-```{r, warning=FALSE, message=FALSE, out.width="100%"}
-s1 <- ggplot(data= all, aes(x=GrLivArea)) +
-        geom_density() + labs(x='Square feet living area')
-s2 <- ggplot(data=all, aes(x=as.factor(TotRmsAbvGrd))) +
-        geom_histogram(stat='count') + labs(x='Rooms above Ground')
-s3 <- ggplot(data= all, aes(x=X1stFlrSF)) +
-        geom_density() + labs(x='Square feet first floor')
-s4 <- ggplot(data= all, aes(x=X2ndFlrSF)) +
-        geom_density() + labs(x='Square feet second floor')
-s5 <- ggplot(data= all, aes(x=TotalBsmtSF)) +
-        geom_density() + labs(x='Square feet basement')
-s6 <- ggplot(data= all[all$LotArea<100000,], aes(x=LotArea)) +
-        geom_density() + labs(x='Square feet lot')
-s7 <- ggplot(data= all, aes(x=LotFrontage)) +
-        geom_density() + labs(x='Linear feet lot frontage')
-s8 <- ggplot(data= all, aes(x=LowQualFinSF)) +
-        geom_histogram() + labs(x='Low quality square feet 1st & 2nd')
+Any Airbnb user knows how important are reviews! Let's see how how good are bavarians in receiving guest. 
 
-layout <- matrix(c(1,2,5,3,4,8,6,7),4,2,byrow=TRUE)
-multiplot(s1, s2, s3, s4, s5, s6, s7, s8, layout=layout)
+``` {r EDA score of reviews}
+final_listings %>% 
+  summarise(Min = min(review_scores_rating,na.rm=TRUE),Mean = round(mean(review_scores_rating,na.rm=TRUE), 2), Max = max(review_scores_rating,na.rm=TRUE))
 ```
 
-I will investigate several of these variables for outliers later on. For the lot visualization, I have already taken out the lots above 100,000 square feet (4 houses).
+The average review score for Airbnb accommodations in Munich is of 93.68, which is very high (definitely higher than our GPA!).
+As we can see from the below graph, the distribution of reviews is left skewed, with the majority of grades being between 75 and 100. Therefore, Munich hosts seem to be very welcoming !
 
-GrLivArea seemed to be just the total of square feet 1st and 2nd floor. However, in a later version, I discovered that there is also a variable called: LowQualFinSF: Low quality finished square feet (all floors). As you can see above (Low quality square feet 1st and 2nd) almost all houses have none of this (only 40 houses do have some). It turns out that these square feet are actually included in the GrLivArea. The correlation between those 3 variables and GrLivArea is exactely 1.
 
-```{r}
-cor(all$GrLivArea, (all$X1stFlrSF + all$X2ndFlrSF + all$LowQualFinSF))
-head(all[all$LowQualFinSF>0, c('GrLivArea', 'X1stFlrSF', 'X2ndFlrSF', 'LowQualFinSF')])
-```
-
-### The most important categorical variable; Neighborhood
-
-Th first graph shows the median SalePrice by Neighorhood. The frequency (number of houses) of each Neighborhood in the train set is shown in the labels.
-
-The second graph below shows the frequencies across all data.
-
-```{r, warning=FALSE, out.width="100%"}
-n1 <- ggplot(all[!is.na(all$SalePrice),], aes(x=Neighborhood, y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=50000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) +
-        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
-n2 <- ggplot(data=all, aes(x=Neighborhood)) +
-        geom_histogram(stat='count')+
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3)+
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-grid.arrange(n1, n2)
+``` {r  EDA cleaning reviews}
+ggplot(data = final_listings,
+       #choosing data and buiding graph
+       mapping = aes(x = review_scores_rating)) +
+  #choosing variable to build distribution for
+         geom_histogram(
+           #choosing graph type
+           fill = "navy", 
+           bins = 50, 
+           size = 0.8, 
+           color = "black") +
+  #adding some style to the chart
+         theme_bw() +
+  #setting theme
+         ylab("Frequency") + #y-axis label
+         xlab("Review Scores") + #x-axis label
+         labs(title="Munich Airbnb hosts score quite high",
+              #adding name to the graph
+              subtitle = "Review Scores Histogram")
+              #adding subtitle
 ```
-
-### Overall Quality, and other Quality variables
 
-I have already visualized the relation between Overall Quality and SalePrice in my initial explorations, but I want to visualize the frequency distribution as well. As there are more quality measurements, I am taking the opportunity to bundle them in this section.
 
-```{r, warning=FALSE, message=FALSE, out.width="100%"}
-q1 <- ggplot(data=all, aes(x=as.factor(OverallQual))) +
-        geom_histogram(stat='count')
-q2 <- ggplot(data=all, aes(x=as.factor(ExterQual))) +
-        geom_histogram(stat='count')
-q3 <- ggplot(data=all, aes(x=as.factor(BsmtQual))) +
-        geom_histogram(stat='count')
-q4 <- ggplot(data=all, aes(x=as.factor(KitchenQual))) +
-        geom_histogram(stat='count')
-q5 <- ggplot(data=all, aes(x=as.factor(GarageQual))) +
-        geom_histogram(stat='count')
-q6 <- ggplot(data=all, aes(x=as.factor(FireplaceQu))) +
-        geom_histogram(stat='count')
-q7 <- ggplot(data=all, aes(x=as.factor(PoolQC))) +
-        geom_histogram(stat='count')
+### Guests
 
-layout <- matrix(c(1,2,8,3,4,8,5,6,7),3,3,byrow=TRUE)
-multiplot(q1, q2, q3, q4, q5, q6, q7, layout=layout)
+The same analysis applies to the number of Guest included in a single Airbnb. The minimum being (logically) 1 and the median being 1 as well, this indicates that the majority of observations have 1 guest included in the accommodation. Once again, the distribution is right-skewed, with the largest observation being 200, most probably an outlier as well. 
 
+``` {r EDA guests included}
+glue("Minimum Guests Included: {min(final_listings$guests_included)} 
+     | Median Guests Included: {median(final_listings$guests_included)} 
+     | Maximum Guests Included: {max(final_listings$guests_included)}")
+#function glue allows to obtain a convenient table that shows summary statistics for the variables
 ```
 
-Overall Quality is very important, and also more granular than the other variables. External Quality is also improtant, but has a high correlation with Overall Quality (0.73). Kitchen Quality also seems one to keep, as all houses have a kitchen and there is a variance with some substance. Garage Quality does not seem to distinguish much, as the majority of garages have Q3. Fireplace Quality is in the list of high correlations, and in the important variables list. The PoolQC is just very sparse (the 13 pools cannot even be seen on this scale). I will look at creating a 'has pool' variable later on.
 
-### The second most important categorical variable; MSSubClass
+# Geography
 
-The first visualization shows the median SalePrice by MSSubClass. The frequency (number of houses) of each MSSubClass in the train set is shown in the labels.
+For some variables it is useful to see what exact values are the most frequent. So we did for neighborhood variable which we specified at 11 different areas. As we can see, Altstadt and Neuhausen-Nymphenburg-Laim areas are far the most frequent in terms of AirBnB property options. These two regions, on aggregate, correspond to almost 50% of rental options on the website. 
 
-The histrogram shows the frequencies across all data. Most houses are relatively new, and have one or two stories.
+``` {r EDA frequency Neighbourhood}
+#new dataset
+freq_neighbourhood <- data.frame( 
+                        cbind(
+                            Frequency = table(final_listings$neighbourhood_cleansed),
+                            #adding frequency table
+                            Percent = prop.table(table(final_listings$neighbourhood_cleansed)) * 100
+                            #adding percentage table
+                                    ))
+
+freq_neighbourhood<-freq_neighbourhood %>%
+  arrange(desc(Percent)) 
+#setting descending order to represent frequency and percentage of neighbourhoods
+freq_neighbourhood
+#showing the table
+```
+
+Let us use a map to understand the reason underlying the over representation of those neighborhoods. From this map, it is evident that central and the western are particularly popular for Airbnb. After consulting our fellow german student, it appears that those neighborhoods are the touristic hot spots of the city. 
+As previously mentioned, Altstadt is the old city center of Munich and has a lot of museums, monuments, restaurants and other touristic activities (you can even surf in Altstadt!). Therefore, it is logical to see a large supply of Airbnb in this part of the city. 
+On the other hand, the relatively high presence of Airbnb offering from Neuhausen-Nymphenburg-Laim is explained by the fact that Oktoberfest world-known celebrations take place in this part of the city. However, this district is also the largest in terms of size, which explains it high supply in Airbnb as well. 
+Finally, Bogenhausen is the least popular district as the neighborhood is very residential. 
+
+
+``` {r EDA mapping of Neighbourhood}
+#choosing dataset
+listings %>% 
+  select(longitude, neighbourhood_cleansed, 
+         neighbourhood, latitude, price,
+         name, room_type, minimum_nights) %>%
+  #selecting the variables of interest
+  leaflet() %>%
+  #creating the map
+  setView(lng = 11.5820, lat = 48.1351, zoom = 10) %>%
+  #setting map specs
+  addTiles() %>% 
+  #adding a tile layer to the map
+  
+  addMarkers(clusterOptions = markerClusterOptions(),
+  #adding markers to the map
+             ~longitude, ~latitude, 
+             label = ~paste(name,"|", 
+                            "Type Room :", room_type,"|",
+                            "Min Nights :", minimum_nights))
+              #labelling the map
+```
+
+
+Now that we identified the most popular neighborhoods in terms of number of Airbnb, let us compare them to the average price for each of these district. As we could expect, the most popular neighborhood, Altstadt, is also the most expensive. The remaining neighborhoods share a very similar price range. 
+
+``` {r EDA comparing of Neighbourhood}
+#creating dataset
+compare_neighborhoods <- final_listings %>% 
+  group_by(neighbourhood_cleansed) %>% 
+  #choosing grouping variable
+  summarise(Count= count(neighbourhood_cleansed), 
+            Percentage = round((Count/9376)*100, 2), 
+            Mean = round(mean(price),2)) %>% 
+  #adding some summary statistics of price in different areas
+  arrange(desc(Percentage))
+  #representing the data in descending order
+  
+compare_neighborhoods
+#showin the table
+```
+
+
+
+### Property Type
+
+Let us now look into the distribution of property types. We have divided our property types in 5 different categories: Apartment, House, Condominium, Serviced Apartment and Others. As previously mentioned, the vast majority (86%) of properties available on Airbnb in Munich are apartments, which is not surprising for a highly urban city (see frequency graph). 
+
+``` {r EDA property type1}
+freq_prop <- data.frame(cbind(Frequency = table(final_listings$prop_type_simplified), Percent = prop.table(table(final_listings$prop_type_simplified)) * 100))
+freq_prop<-freq_prop %>% 
+  arrange(desc(Percent))
+freq_prop
+```
+
+``` {r  EDA prop type distribution}
+#new dataset for additional theme
+theme_additional <- theme(plot.title = 
+                            element_text(size = 18, face = "bold"),
+                          axis.title.x = 
+                            element_text(size = 10, face = "bold" ),
+                          axis.title.y = 
+                            element_text(size = 14, face = "bold"),
+                          legend.position = "none")
+#correcting the text size and fontface
+#removing the legend
+
+ggplot(data = freq_prop, mapping = 
+         #building graph
+         aes(
+             y = reorder(row.names(freq_prop), Frequency),
+              x = Frequency )) +
+  #setting x and y variables
+  #function reorder allows the graph to be in descending order
+         geom_bar(
+           #selecting graph type
+           stat = "identity", 
+           mapping = aes
+           (fill = row.names(freq_prop), 
+             color = row.names(freq_prop)), 
+           #painting the graph elements based on their frequency
+           #outline is also painted according to frequency
+           alpha = .7, 
+           #setting transparency
+           size = 1.1) +
+          #setting size
+         geom_label(mapping = aes(label=Frequency), 
+                    fill = "black", 
+                    size = 3, 
+                    color = "white", 
+                    fontface = "bold", 
+                    hjust=.7) +
+  #using geom_label to add informative labels
+  #setting black fill and white bold font
+         ylab("") +
+          #removing y-axis name
+         labs(title="Apartment is the most common property 
+              type in Munich AirBnB", 
+              subtitle = "Property type by frequency")+
+  #adding title and subtitle to the graph
+         theme_bw()+
+         theme_additional
+#adding black and white theme and setting font settings specified above
+````
+
+Let us see if the type of property has any influence on price. 
+The average price for an apartment is very close to the mean price for an accomodation in Munich on Airbnb (see table below). The most expensive property types are serviced apartments, which are also the least represented. Quite surprsingly, the average price for renting a house through Airbnb is higher than renting an apartment, which is probably due to the fact that houses must be in suburbs, and therefore further away from the touristic attractions !
+
+
+``` {r EDA comparing of property type}
+#new dataset
+compare_property <- final_listings %>% 
+  group_by(prop_type_simplified) %>% 
+  #choosing grouping variable
+  summarise(Count= count(prop_type_simplified), 
+            Percentage = round((Count/9376)*100, 2), 
+            Mean = round(mean(price, na.rm=TRUE),2)) %>% 
+  #calculating summary statistics
+  arrange(desc(Percentage))
+#putting the table values in descending order according to the percentage
+  
+compare_property
+#showing the table
+
+
+```
+
+
+### Room Type
+
+Similary, let create a frequency table for the distribution of room types. We observe that the vast majority (over 95%) of the accommodations available in Munich are Entire Homes/Apartments and Private Rooms.
+
+
+``` {r EDA room type}
+#new dataset
+freq_room_type <- data.frame(
+                      cbind(
+                          Frequency = table(final_listings$room_type), 
+                          #adding frequency variable
+                          Percent = prop.table(table(final_listings$room_type))* 100))
+                          #adding percentage variable 
+
+freq_room_type<-freq_room_type %>% 
+  arrange(desc(Percent))
+#putting table in descending order
+freq_room_type
+#showing table
+
+```
+
+With regards to price, the graph below tells us that Hotel Rooms are unsurprisingly more expensive than entire house/apartments or private rooms. 
+
+``` {r}
+mean_room_type <- aggregate(list(average_price = final_listings$price), list(room_type = final_listings$room_type), mean)
+mean_room_type$Percent <- prop.table(mean_room_type$average_price) * 100
+mean_room_type
+```
+
+
+``` {r  EDA room type graph}
+#new dataset
+final_listings<-final_listings %>%
+  mutate(room_type=(room_type))
+#new variable which is a factor variable out of room type
+  
+#theme dataset
+theme_add2 <- theme(
+              plot.title = element_text(size = 18, face = "bold"),
+              axis.text.x = element_text(size = 14, face = "bold"),
+              axis.text.y = element_text(size = 14, face = "bold"),
+              axis.title.x = element_text(size = 14),
+              axis.title.y = element_text(size = 14),
+              legend.position = "none")
+#removing the legend
+#setting text sizes and fontfaces
+
+ggplot(data = mean_room_type, #building a graph
+       aes(y=average_price, 
+           x=reorder(room_type, average_price))) +
+  #choosing x and y variables
+  #using reorder we show the diagram in descending order
+         coord_flip() +
+  #coordinate flip allows to make graph horizontal
+         geom_segment(aes
+                      (xend=room_type, 
+                        yend=0, 
+                        color = room_type), 
+                      size = 2) +
+        #choosing graph type lines
+        #coloring them according to room_type
+        #choosing the size
+         geom_point(size=7, mapping = 
+                      aes(color = room_type)) +
+        #adding points and colors based on room type and their size
+         theme_minimal() +
+        #adding theme
+         xlab("") +
+        #removing x-axis label
+         ylab("Price (in € per night)") +
+        #adding y-axis label
+         labs(title="Hotel rooms are the most expensive ones", 
+              subtitle = "Room type by average price")+
+          #adding title and subtitle to the graph
+         theme_add2
+        #adding the font settings and legend removal specified above 
+
+
+```
+
+### Host is Super Host
+
+Finally, let us look at the frequency table for the type of host. This is a logical variable (Yes or No) with information relating to whether our host is a super host or not. As we can see from the below table, over 85% of the hosts in Munich are not superhost. 
+
+``` {r}
+mean_host_type <- aggregate(list(average_price = final_listings$price), list(host_is_superhost = final_listings$host_is_superhost), mean)
+mean_host_type$Percent <- prop.table(mean_host_type$average_price) * 100
+mean_host_type
+
+```
+
+``` {r EDA superhost type}
+#new dataset
+freq_host_type <- data.frame(
+                      cbind(
+                        Frequency = table(final_listings$host_is_superhost), 
+                        #adding frequency variable to the table
+                        Percent = prop.table(table(final_listings$host_is_superhost))* 100))
+                        #adding percent variable to the table
+
+freq_host_type<-freq_host_type %>% 
+  arrange(desc(Percent))
+#putting the table in descending order
+freq_host_type
+#showing the table
+
+```
+
+Moreover, the following graph shows us that being a super host does not seem to have a great influence on price. 
+
+
+``` {r  EDA superhost}
+#new dataset
+final_listings<-final_listings %>%
+  mutate(host_is_superhost=factor(host_is_superhost))
+#creating new variable which is a factor out of host_is_superhost
+
+#new theme dataset
+theme_add3 <- theme(plot.title = element_text(size = 23, hjust = .5),
+              axis.text.x = element_text(size = 19, face = "bold"),
+              axis.text.y = element_text(size = 19, face = "bold"),
+              axis.title.x = element_text(size = 19),
+              axis.title.y = element_text(size = 19),
+              legend.position = "none")
+#removing legend
+#changing the font size and fontface on the labels of the graph and graph text
+  
+ggplot(data = mean_host_type, #building graph
+       aes(y=average_price, 
+           x=reorder(host_is_superhost, average_price) 
+           )) +
+  #choosing x and y variables
+  #using reorder we show the diagram in descending order
+         coord_flip()+
+  #making graph horizontal
+         geom_segment(aes(
+           xend=host_is_superhost, 
+           yend=0, 
+           color = host_is_superhost), 
+           size = 2) +
+         #choosing graph type lines
+        #coloring them according to room_type
+        #choosing the size
+         geom_point(size=5, 
+                    mapping = aes(
+           color = host_is_superhost)) +
+          #adding points and colors based on room type and their size
+         theme_minimal() +
+        #setting theme
+         xlab("") +
+        #removing x-axis label
+         ylab("Price (in € per night)") +
+        #adding y-axis label
+         labs(title="Super hosts provide cheaper property", 
+              subtitle = "Super host (Y/N) by average price")+
+              #adding title and subtitle to the graph
+         theme_add2
+          #applyting font settings and legend removal specified above 
+```
+
+
+
+## Correlation
+
+### Correlation Coefficient
+
+Now that we have developed a thorough understanding of our variables, let’s compute the correlation coefficient between the most interesting variables of our analysis. This measure allows to measure the strength of the relationship between the relative movement of two variables. To do so, we use the "ggpair" formula.  
+
+For the purpose of our analysis, we are primarily interested in the interaction between the price attribute and the other attributes. The variable with the highest coefficient of correlation is cleaning fees, which is logical as this attribute has a direct numerical influence on the overall price of an Airbnb stay. Moreover, an extra person in the accommodation also raises the price (corr = 0.112). The three remaining variable (number of reviews, average score rating and guests included) display a very low correlation with price. 
+Regarding the rest of the analysis, most correlations are very low with the exception of the relation between an extra person in the accommodation and the cleaning. 
+
+Overall, this correlation matrix shows us that the coefficients are quite low among the selected variables. This implies that no variables should be dropped for the model we wish to build. 
+
+``` {r  EDA ggpairs, fig.width =10, fig.height=10,message = FALSE, warning = FALSE }
+#final_listings %>% 
+ # select(price, cleaning_fee, extra_people, number_of_reviews, review_scores_rating, longitude, latitude, minimum_nights, guests_included) %>% 
+  #ggpairs()
 
-```{r, warning=FALSE, out.width="100%"}
-ms1 <- ggplot(all[!is.na(all$SalePrice),], aes(x=MSSubClass, y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=50000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) +
-        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
-ms2 <- ggplot(data=all, aes(x=MSSubClass)) +
-        geom_histogram(stat='count')+
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-grid.arrange(ms1, ms2)
-```
-
-###Garage variables
-
-Several Garage variables have a high correlation with SalePrice, and are also in the top-20 list of the quick random forest. However, there is multicolinearity among them and I think that 7 garage variables is too many anyway. I feel that something like 3 variables should be sufficient (possibly GarageCars, GarageType, and a Quality measurement), but before I do any selection I am visualizing all of them in this section.
+final_listings %>% 
+  select(price, cleaning_fee, extra_people, number_of_reviews, review_scores_rating, guests_included) %>% 
+  #order variables they will appear in ggpairs()
+  ggpairs()+
+  theme_bw()
+```
 
-```{r}
-#correct error
-all$GarageYrBlt[2593] <- 2007 #this must have been a typo. GarageYrBlt=2207, YearBuilt=2006, YearRemodAdd=2007.
-```
 
+### Correlation Matrix
 
-```{r, warning=FALSE, message=FALSE, out.width="100%"}
-g1 <- ggplot(data=all[all$GarageCars !=0,], aes(x=GarageYrBlt)) +
-        geom_histogram()
-g2 <- ggplot(data=all, aes(x=as.factor(GarageCars))) +
-        geom_histogram(stat='count')
-g3 <- ggplot(data= all, aes(x=GarageArea)) +
-        geom_density()
-g4 <- ggplot(data=all, aes(x=as.factor(GarageCond))) +
-        geom_histogram(stat='count')
-g5 <- ggplot(data=all, aes(x=GarageType)) +
-        geom_histogram(stat='count')
-g6 <- ggplot(data=all, aes(x=as.factor(GarageQual))) +
-        geom_histogram(stat='count')
-g7 <- ggplot(data=all, aes(x=as.factor(GarageFinish))) +
-        geom_histogram(stat='count')
+Now that the correlation coefficient have been computed, let's move on to the correlation matrix. 
 
-layout <- matrix(c(1,5,5,2,3,8,6,4,7),3,3,byrow=TRUE)
-multiplot(g1, g2, g3, g4, g5, g6, g7, layout=layout)
-
+```{r corr matrix}
+airbnb_cor<-final_listings[, sapply(final_listings, is.numeric)]
+airbnb_cor<-airbnb_cor[complete.cases(airbnb_cor), ]
+correlation_matrix<-cor(airbnb_cor, method='spearman')
+corrplot(correlation_matrix, method='color')
 ```
-
-As already mentioned in section 4.2, GarageCars and GarageArea are highly correlated. Here, GarageQual and GarageCond also seem highly correlated, and both are dominated by level =3. 
 
-### Basement variables
+The plot above is indicative of correlations between the numeric variables in our dataset. 
+The darker is the square color, the higher is the correlation, where positive correlations are shown by blue squares and negatives are vice versa shown by warmer colors. The diagonal is dark blue as it shows the correlations between identical variables (correlation=1). Some obviously correlated variables like number of bedrooms and beds require no explanation for quite high correlation between them. Intuitively, cleaning fee is positively correlated with the number of guests included as larger number of visitors usually means larger property rented and hence higher cleaning fee. Similarly, price is positively correlated with the number of bedrooms that property provides and hence with the number of people included too.Nevertheless, some weak negative correlation can be seen between price and number of reviews. This may be caused by the fact that cheaper property tend to be rented more often. One more insight from this diagram is the fact that availability throughout the year is negatively correlated to review scores which means that the property with high rating is highly demanded.
 
-Similar the garage variables, multiple basement variables are important in the correlations matrix and the Top 20 RF predictors list. However, 11 basement variables seems an overkill. Before I decide what I am going to do with them, I am visualizing 8 of them below. The 2 "Bathroom" variables are dealt with in Feature Engineering (section 7.1), and the "Basement square feet" is already discussed in section 6.2.1.
+Creating total price for 4 days
 
-```{r, warning=FALSE, message=FALSE, out.width="100%"}
-b1 <- ggplot(data=all, aes(x=BsmtFinSF1)) +
-        geom_histogram() + labs(x='Type 1 finished square feet')
-b2 <- ggplot(data=all, aes(x=BsmtFinSF2)) +
-        geom_histogram()+ labs(x='Type 2 finished square feet')
-b3 <- ggplot(data=all, aes(x=BsmtUnfSF)) +
-        geom_histogram()+ labs(x='Unfinished square feet')
-b4 <- ggplot(data=all, aes(x=as.factor(BsmtFinType1))) +
-        geom_histogram(stat='count')+ labs(x='Rating of Type 1 finished area')
-b5 <- ggplot(data=all, aes(x=as.factor(BsmtFinType2))) +
-        geom_histogram(stat='count')+ labs(x='Rating of Type 2 finished area')
-b6 <- ggplot(data=all, aes(x=as.factor(BsmtQual))) +
-        geom_histogram(stat='count')+ labs(x='Height of the basement')
-b7 <- ggplot(data=all, aes(x=as.factor(BsmtCond))) +
-        geom_histogram(stat='count')+ labs(x='Rating of general condition')
-b8 <- ggplot(data=all, aes(x=as.factor(BsmtExposure))) +
-        geom_histogram(stat='count')+ labs(x='Walkout or garden level walls')
+TODO: Create a new variable called price_4_nights that uses price, cleaning_fee, guests_included, and extra_people to calculate the total cost for two people to stay at the Airbnb property for 4 nights. This is the variable  we want to explain.
 
-layout <- matrix(c(1,2,3,4,5,9,6,7,8),3,3,byrow=TRUE)
-multiplot(b1, b2, b3, b4, b5, b6, b7, b8, layout=layout)
-
+``` {r}
+final_listings <- final_listings %>% 
+  mutate(price_4_nights=price*4+
+           cleaning_fee+
+           if_else(guests_included==1, extra_people*4,0),
+         log_price_4_nights=log(price_4_nights))
 ```
-
-So it seemed as if the Total Basement Surface in square feet (TotalBsmtSF) is further broken down into finished areas (2 if more than one type of finish), and unfinished area. I did a check between the correlation of total of those 3 variables, and TotalBsmtSF. The correlation is exactely 1, so that's a good thing (no errors or small discrepancies)!
-
-Basement Quality is a confusing variable name, as it turns out that it specifically rates the Height of the basement.
-
-# Feature engineering
-
-## Total number of Bathrooms
-
-There are 4 bathroom variables. Individually, these variables are not very important. However, I assume that I if I add them up into one predictor, this predictor is likely to become a strong one.
-
-"A half-bath, also known as a powder room or guest bath, has only two of the four main bathroom components-typically a toilet and sink." Consequently, I will also count the half bathrooms as half.
 
-```{r}
-all$TotBathrooms <- all$FullBath + (all$HalfBath*0.5) + all$BsmtFullBath + (all$BsmtHalfBath*0.5)
-```
+# Performing the actual Price Prediction (Regression Analysis)
 
-As you can see in the first graph, there now seems to be a clear correlation (it's 0.63). The frequency distribution of Bathrooms in all data is shown in the second graph.
+Before building our linear regression model, we will split our dataset into a training dataset and a testing dataset. Our goal is to create a linear regression model that predicts the price as accurately as possible. We will train our supervised machine learning model (multiple linear regression) on the training dataset and validate our findings using the testing dataset. 
 
-```{r, warning=FALSE}
-tb1 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=as.factor(TotBathrooms), y=SalePrice))+
-        geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
-tb2 <- ggplot(data=all, aes(x=as.factor(TotBathrooms))) +
-        geom_histogram(stat='count')
-grid.arrange(tb1, tb2)
+TODO: Delete this chunk of code that follows
+``` {r}
+final_listings <- final_listings %>% 
+  filter(number_of_reviews > 10) 
 ```
-
-##Adding 'House Age', 'Remodeled (Yes/No)', and IsNew variables
 
-Altogether, there are 3 variables that are relevant with regards to the Age of a house; YearBlt, YearRemodAdd, and YearSold. YearRemodAdd defaults to YearBuilt if there has been no Remodeling/Addition. I will use YearRemodeled and YearSold to determine the Age. However, as parts of old constructions will always remain and only parts of the house might have been renovated, I will also introduce a Remodeled Yes/No variable. This should be seen as some sort of penalty parameter that indicates that if the Age is based on a remodeling date, it is probably worth less than houses that were built from scratch in that same year.
 
-```{r}
-all$Remod <- ifelse(all$YearBuilt==all$YearRemodAdd, 0, 1) #0=No Remodeling, 1=Remodeling
-all$Age <- as.numeric(all$YrSold)-all$YearRemodAdd
-```
-
-```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=Age, y=SalePrice))+
-        geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
-```
+``` {r}
+# Adding an "id" attribute that describes the raw number 
+final_listings <- final_listings %>% mutate(id = row_number())
 
-As expected, the graph shows a negative correlation with Age (old house are worth less).
+# Creating our training dataset, which contains 70% of the data; we are filtering by (price > 0) to ensure that we don't leave in any 0 prices, as linear regression models don't work with 0s inside the model.
+airbnb_train <- final_listings %>% sample_frac(.7) %>% filter(price > 0)
 
-```{r}
-cor(all$SalePrice[!is.na(all$SalePrice)], all$Age[!is.na(all$SalePrice)])
-```
+# Creating our training datset using antijoin: We select everything from our final_listings dataframe that isn't contained in our training dataset. 
+airbnb_test  <- anti_join(final_listings, airbnb_train, by = 'id') %>% filter(price > 0)
 
-As you can see below, houses that are remodeled are worth less indeed, as expected.
+# Sanity Checking in order to evaluate whether a claim or the result of a calculation can possibly be true
+nrow(airbnb_train) + nrow(airbnb_test) == nrow(final_listings %>% filter(price > 0))
 
-```{r, out.width="50%"}
-ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(Remod), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=6) +
-        scale_y_continuous(breaks= seq(0, 800000, by=50000), labels = comma) +
-        theme_grey(base_size = 18) +
-        geom_hline(yintercept=163000, linetype="dashed") #dashed line is median SalePrice
+# Outputting the training dataset
+airbnb_train
 ```
 
-Finally, I am creating the IsNew variable below. Altogether, there are 116 new houses in the dataset.
+### Model 1
 
-```{r}
-all$IsNew <- ifelse(all$YrSold==all$YearBuilt, 1, 0)
-table(all$IsNew)
-```
+We will build our first regression model using the explanatory variables: prop_type_simplified, number_of_reviews, and review_scores_rating. We want to see what kind of impact do the combination of these three attributes in predicting the price of a house. 
 
-These 116 new houses are fairly evenly distributed among train and test set, and as you can see new houses are worth considerably more on average.
+``` {r}
+# Building the first model on the training dataset using the variables prop_type_simplified, number_of_reviews, and review_scores_rating
 
-```{r, out.width="50%"}
-ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(IsNew), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=6) +
-        scale_y_continuous(breaks= seq(0, 800000, by=50000), labels = comma) +
-        theme_grey(base_size = 18) +
-        geom_hline(yintercept=163000, linetype="dashed") #dashed line is median SalePrice
-```
+model1 <- lm(log_price_4_nights ~ prop_type_simplified + 
+                                  number_of_reviews + 
+                                  review_scores_rating, 
+                                  data = airbnb_train)
+summary(model1)
 
-```{r}
-all$YrSold <- as.factor(all$YrSold) #the numeric version is now not needed anymore
 ```
+We start with an R2 of ~0.02 which is super low. This means that our prediction model is 2% better than had we chosen the mean price to make our prediction. Now let's try to see the statistics for this model. 
 
-##Binning Neighborhood
-
-```{r}
-nb1 <- ggplot(all[!is.na(all$SalePrice),], aes(x=reorder(Neighborhood, SalePrice, FUN=median), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "median", fill='blue') + labs(x='Neighborhood', y='Median SalePrice') +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=50000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) +
-        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
-nb2 <- ggplot(all[!is.na(all$SalePrice),], aes(x=reorder(Neighborhood, SalePrice, FUN=mean), y=SalePrice)) +
-        geom_bar(stat='summary', fun.y = "mean", fill='blue') + labs(x='Neighborhood', y="Mean SalePrice") +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=50000), labels = comma) +
-        geom_label(stat = "count", aes(label = ..count.., y = ..count..), size=3) +
-        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
-grid.arrange(nb1, nb2)
-```
-
-Both the median and mean Saleprices agree on 3 neighborhoods with substantially higher saleprices. The separation of the 3 relatively poor neighborhoods is less clear, but at least both graphs agree on the same 3 poor neighborhoods. Since I do not want to 'overbin', I am only creating categories for those 'extremes'.
-
-```{r}
-all$NeighRich[all$Neighborhood %in% c('StoneBr', 'NridgHt', 'NoRidge')] <- 2
-all$NeighRich[!all$Neighborhood %in% c('MeadowV', 'IDOTRR', 'BrDale', 'StoneBr', 'NridgHt', 'NoRidge')] <- 1
-all$NeighRich[all$Neighborhood %in% c('MeadowV', 'IDOTRR', 'BrDale')] <- 0
+``` {r}
+# Saving the statistics of the model into the model table. 
+model1_table <- tidy(model1)
+model1_table
 ```
 
-```{r}
-table(all$NeighRich)
-```
+Let us try to see what would happen if we had trained our model on our entire dataset instead of just the training dataset. 
 
-##Total Square Feet
+``` {r}
+# Building a second model on the entire dataset to check how it performs 
 
-As the total living space generally is very important when people buy houses, I am adding a predictors that adds up the living space above and below ground.
+model1_1 <- lm(log_price_4_nights ~ prop_type_simplified + 
+                                  number_of_reviews + 
+                                  review_scores_rating, 
+                                  data = final_listings)
 
-```{r}
-all$TotalSqFeet <- all$GrLivArea + all$TotalBsmtSF
-```
+summary(model1_1)
+tidy(model1_1)
+anova(model1_1)
 
-```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotalSqFeet, y=SalePrice))+
-        geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
-        geom_text_repel(aes(label = ifelse(all$GrLivArea[!is.na(all$SalePrice)]>4500, rownames(all), '')))
 ```
+This doesn't look too good to be honest. These 3 variables aren't great explanatory variables when it comes to predicting the price. Now let's try to create the equation of the price of 4 nights in the form of these 3 attributes. 
 
-As expected, the correlation with SalePrice is very strong indeed (0.78). 
+General equation for the price 4 nights:
+$$\hat{y}= \hat{price~4~nights} = 6.085 + 0.0407 . 1_{is,condominium}(x) - 0.1072 . 1_{is,house}(x) + 0.1087 . 1_{is,other}(x) \\ + 0.4423 . 1_{is,serviced~apartment}(x) - 0.001 * number~of~reviews - 0.001 . review~scores~rating$$
+Coefficients of prop_type_simplified:
+$$+ 0.041 . 1_{is,condominium}(x) - 0.1072 . 1_{is,house}(x) + 0.1087 . 1_{is,other}(x) + 0.4423 . 1_{is,serviced apartment}(x)$$
 
+Coefficient of review_scores_rating:
+$$\ - 0.001 $$
 ```{r}
-cor(all$SalePrice, all$TotalSqFeet, use= "pairwise.complete.obs")
-```
 
-The two potential outliers seem to 'outlie' even more than before. By taking out these two outliers, the correlation increases by 5%.
+# Autoplotting using autoplot and using VIF to calculate the Variance Inflation Factor (VIF) for your predictors and determine whether you have colinear variables. 
 
-```{r}
-cor(all$SalePrice[-c(524, 1299)], all$TotalSqFeet[-c(524, 1299)], use= "pairwise.complete.obs")
+autoplot(model1)
+car::vif(model1)
 ```
+Residuals vs Fitted plot is used to check the linear relationship assumptions. We want the line to be horizontal. In this model, it is not really horizontal.
 
-##Consolidating Porch variables
+Normal Q-Q plot is used to examine whether the residuals are normally distributed. It’s good that the residuals points follow the straight dashed line.
 
-Below, I listed the variables that seem related regarding porches.
+Scale-Location plot is used to check the homogeneity of variance of the residuals. We want a horizontal line with equally spread points. In this model, it can be seen that the variability of the residual points increases with the value of the fitted outcome variable, suggesting non-constant variances in the residuals errors.
 
+The VIF scores are in a reasonable range in this model. 
 
-* WoodDeckSF: Wood deck area in square feet
+### Model 2
 
-* OpenPorchSF: Open porch area in square feet
 
-* EnclosedPorch: Enclosed porch area in square feet
+``` {r}
 
-* 3SsnPorch: Three season porch area in square feet
+# Building a second model based on the prop_type_simplified, number_of_reviews, review_scores_rating, and room_type attributes
 
-* ScreenPorch: Screen porch area in square feet
+model2 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type, data = airbnb_train)
 
-        
-As far as I know, porches are sheltered areas outside of the house, and a wooden deck is unsheltered. Therefore, I am leaving WoodDeckSF alone, and are only consolidating the 4 porch variables.
-
-```{r}
-all$TotalPorchSF <- all$OpenPorchSF + all$EnclosedPorch + all$X3SsnPorch + all$ScreenPorch
+# Summary of the model
+summary(model2)
 ```
 
-Although adding up these Porch areas makes sense (there should not be any overlap between areas), the correlation with SalePrice is not very strong.
-
-```{r}
-cor(all$SalePrice, all$TotalPorchSF, use= "pairwise.complete.obs")
-```
+Our R2 increases to ~13% after account for the room_type attribute - beautiful. While using the room_type attribute to explain the price of a room, it _does_ definitely attribute some value. This can probably be explained by the fact that while booking a hotel room, it's extremely important for us to know what type of room are we paying for. 
 
 ```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotalPorchSF, y=SalePrice))+
-        geom_point(col='blue') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
-```
-
-#Preparing data for modeling
 
-##Dropping highly correlated variables
+# Autoplotting the second model
 
-First of all, I am dropping a variable if two variables are highly correlated. To find these correlated pairs, I have used the correlations matrix again (see section 6.1). For instance: GarageCars and GarageArea have a correlation of 0.89. Of those two, I am dropping the variable with the lowest correlation with SalePrice (which is GarageArea with a SalePrice correlation of 0.62. GarageCars has a SalePrice correlation of 0.64).
-
-```{r}
-dropVars <- c('YearRemodAdd', 'GarageYrBlt', 'GarageArea', 'GarageCond', 'TotalBsmtSF', 'TotalRmsAbvGrd', 'BsmtFinSF1')
-
-all <- all[,!(names(all) %in% dropVars)]
+autoplot(model2)
+car::vif(model2)
 ```
-
-##Removing outliers
+In this model, the residuals vs fitted plot it is still not really horizontal, but it is pretty close to it.
+The Normal Q-Q plot looks good. 
+In this model, it can be seen that the variability of the residual points increases with the value of the fitted outcome variable, suggesting non-constant variances in the residuals errors.
 
-For the time being, I am keeping it simple and just remove the two really big houses with low SalePrice manually. However, I intend to investigate this more thorough in a later stage (possibly using the 'outliers' package).
+The VIF seems to be in an acceptable range. 
 
-```{r}
-all <- all[-c(524, 1299),]
-```
-
-##PreProcessing predictor variables
+### Model 3
 
-Before modeling I need to center and scale the 'true numeric' predictors (so not variables that have been label encoded), and create dummy variables for the categorical predictors. Below, I am splitting the dataframe into one with all (true) numeric variables, and another dataframe holding the (ordinal) factors.
+Most owners advertise the exact location of their listing (is_location_exact == TRUE), while a non-trivial proportion don’t. Now, how important is this exactly while trying to explain the price? 
 
-```{r}
-numericVarNames <- numericVarNames[!(numericVarNames %in% c('MSSubClass', 'MoSold', 'YrSold', 'SalePrice', 'OverallQual', 'OverallCond'))] #numericVarNames was created before having done anything
-numericVarNames <- append(numericVarNames, c('Age', 'TotalPorchSF', 'TotBathrooms', 'TotalSqFeet'))
+``` {r}
 
-DFnumeric <- all[, names(all) %in% numericVarNames]
+# Model 3 tries to use the is_location_exact attribute to figure out how much the price can be explained away by the location
 
-DFfactors <- all[, !(names(all) %in% numericVarNames)]
-DFfactors <- DFfactors[, names(DFfactors) != 'SalePrice']
+model3 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type + is_location_exact, data = airbnb_train)
+summary(model3)
 
-cat('There are', length(DFnumeric), 'numeric variables, and', length(DFfactors), 'factor variables')
 ```
-
-###Skewness and normalizing of the numeric predictors
 
-**Skewness**
-Skewness is a measure of the symmetry in a distribution.  A symmetrical dataset will have a skewness equal to 0.  So, a normal distribution will have a skewness of 0. Skewness essentially measures the relative size of the two tails. As a rule of thumb, skewness should be between -1 and 1. In this range, data are considered fairly symmetrical. In order to fix the skewness, I am taking the log for all numeric predictors with an absolute skew greater than 0.8 (actually: log+1, to avoid division by zero issues).
-
-```{r}
-for(i in 1:ncol(DFnumeric)){
-        if (abs(skew(DFnumeric[,i]))>0.8){
-                DFnumeric[,i] <- log(DFnumeric[,i] +1)
-        }
-}
-```
+The exact location doesn't really factor in into the model's accuracy much. This can probably be explained by the fact that people don't usually find out that the listing isn't at the exact location until they reach the specified location on the day of checking in. 
 
-**Normalizing the data**
-```{r}
-PreNum <- preProcess(DFnumeric, method=c("center", "scale"))
-print(PreNum)
-```
 ```{r}
-DFnorm <- predict(PreNum, DFnumeric)
-dim(DFnorm)
+# Autoplotting the third model.
+autoplot(model3)
+car::vif(model3)
 ```
 
-###One hot encoding the categorical variables
+### Model 4
 
-The last step needed to ensure that all predictors are converted into numeric columns (which is required by most Machine Learning algorithms) is to 'one-hot encode' the categorical variables. This basically means that all (not ordinal) factor values are getting a seperate colums with 1s and 0s (1 basically means Yes/Present). To do this one-hot encoding, I am using the `model.matrix()` function.
+Our next goal is to check how the updated neighbourhood_cleansed affects our model's R^2. To do this, we will integrate it as an explanatory variable into our model. 
 
-```{r}
-DFdummies <- as.data.frame(model.matrix(~.-1, DFfactors))
-dim(DFdummies)
-```
+``` {r}
+# Model4: Prediction model based on prop_type_simplified, number_of_reviews, review_scores_rating, and review_scores_rating.
+model4 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type + neighbourhood_cleansed, data = airbnb_train)
+summary(model4)
 
-###Removing levels with few or no observations in train or test
+``` 
 
-In previous versions, I worked with Caret's `Near Zero Variance` function. Although this works, it also is a quick fix and too much information got lost. For instance, by using the defaults, all Neighborhoods with less than 146 houses are omitted as (one-hot encoded) variables (frequency ratio higher than 95/5). Therefore, I have taken amore carefull manual approach in this version.
-
-```{r}
-#check if some values are absent in the test set
-ZerocolTest <- which(colSums(DFdummies[(nrow(all[!is.na(all$SalePrice),])+1):nrow(all),])==0)
-colnames(DFdummies[ZerocolTest])
-DFdummies <- DFdummies[,-ZerocolTest] #removing predictors
-```
+The model's accuracy increases by 3% using the neighbourhoods_cleansed attributed which contains 6 groups of neighbourhoods. This can probably be explained by the fact that location does play a major role while booking an airbnb.
 
-```{r}
-#check if some values are absent in the train set
-ZerocolTrain <- which(colSums(DFdummies[1:nrow(all[!is.na(all$SalePrice),]),])==0)
-colnames(DFdummies[ZerocolTrain])
-DFdummies <- DFdummies[,-ZerocolTrain] #removing predictor
-```
+Now, let's try to see how much our price attribute depends upon the cancellation policy. We will use the cancellation_policy to build model 5. 
 
-Also taking out variables with less than 10 'ones' in the train set.
+### Model 5
 
-```{r}
-fewOnes <- which(colSums(DFdummies[1:nrow(all[!is.na(all$SalePrice),]),])<10)
-colnames(DFdummies[fewOnes])
-DFdummies <- DFdummies[,-fewOnes] #removing predictors
-dim(DFdummies)
-```
+``` {r}
+# Model 5: Prediction price build on prop_type_simplified, number_of_reviews, review_scores_rating, room_type, neighbourhood_cleansed, and cancellation_policy. 
+model5 <- lm(log_price_4_nights ~ prop_type_simplified + number_of_reviews + review_scores_rating + room_type + neighbourhood_cleansed + cancellation_policy, data = airbnb_train)
+summary(model5)
+tidy(model5)
 
-Altogether, I have removed 49 one-hot encoded predictors with little or no variance. Altough this may seem a significant number, it is actually much less than the number of predictors that were taken out by using caret's`near zero variance` function (using its default thresholds).
 
-```{r}
-combined <- cbind(DFnorm, DFdummies) #combining all (now numeric) predictors into one dataframe 
 ```
 
-##Dealing with skewness of response variable
+Our t_stat for cancellation_policymoderate and cancellation_policysuper_strict_30 seems to be insignificantly low. However, maybe because the t-stat of the cancellation_policystrict_14_with_grace_period is quite high, the accuracy of the model seems to have increased. Now let's try to plot this. 
 
 ```{r}
-skew(all$SalePrice)
-```
+# Autoplotting model 5
 
-```{r}
-qqnorm(all$SalePrice)
-qqline(all$SalePrice)
+autoplot(model5)
+car::vif(model5)
 ```
 
-The skew of 1.87 indicates a right skew that is too high, and the Q-Q plot shows that sale prices are also not normally distributed. To fix this I am taking the log of SalePrice.
 
-```{r}
-all$SalePrice <- log(all$SalePrice) #default is the natural logarithm, "+1" is not necessary as there are no 0's
-skew(all$SalePrice)
-```
-
-As you can see,the skew is now quite low and the Q-Q plot is also looking much better.
+### Model 6
 
-```{r}
-qqnorm(all$SalePrice)
-qqline(all$SalePrice)
-```
+``` {r}
+# Building our own custom training model with custom explanatory attributes
 
-## Composing train and test sets
+# First we filter out the training dataset using the quantiles 
+learn <- airbnb_train %>% 
+  filter(price < quantile(airbnb_train$price, 0.9) & price > quantile(airbnb_train$price, 0.1)) %>% 
+  tidyr::drop_na()
 
-```{r}
-train1 <- combined[!is.na(all$SalePrice),]
-test1 <- combined[is.na(all$SalePrice),]
+# Now we build a model to predict the logarithmic price by adding several attributes to the previous model such as availability_365, has_gym, has_tv, has_wifi, has_internet, has_pool, has_gym, has_private_entrance, has_parking and accomodates
+model6 <- lm(log(price_4_nights) ~ prop_type_simplified + number_of_reviews + review_scores_rating + bedrooms + accommodates + room_type + cancellation_policy + neighbourhood_cleansed + availability_365 + last_review + has_tv + has_wifi + has_internet + has_pool + has_gym + has_private_entrance + has_parking + has_balcony, data = learn)
+summary(model6)
 ```
 
-# Modeling
 
-## Lasso Regression Model
+From the values of the t-stats it is quite clear that the logical amenities (gym pool etc) don't really play a huge part while predicing the price of an airbnb. So we are going to remove them while building our best model. 
 
-I have also tried Ridge and Elastic Net models, but since lasso gives the best results of those 3 models I am only keeping the lasso model in the document.
+### Best Model
 
-The elastic-net penalty is controlled by alpha, and bridges the gap between lasso (alpha=1) and ridge (alpha=0). The tuning parameter lambda controls the overall strength of the penalty. It is known that the ridge penalty shrinks the coefficients of correlated predictors towards each other while the lasso tends to pick one of them and discard the others.
+``` {r}
 
-Below, I am using caret cross validation to find the best value for lambda, which is the only hyperparameter that needs to be tuned for the lasso model.
+# In this model, we drop all of the logical amenity attributes and instead incorporate instant_bookable, availability_90, and availability_365 attributes 
 
-```{r}
-set.seed(27042018)
-my_control <-trainControl(method="cv", number=5)
-lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.001,0.1,by = 0.0005))
+bestmodel <- lm(log(price_4_nights) ~ prop_type_simplified  + review_scores_rating + bedrooms + accommodates + room_type + cleaning_fee + instant_bookable + neighbourhood_cleansed + availability_365 + availability_90 + last_review, data = learn)
+summary(bestmodel)
 
-lasso_mod <- train(x=train1, y=all$SalePrice[!is.na(all$SalePrice)], method='glmnet', trControl= my_control, tuneGrid=lassoGrid) 
-lasso_mod$bestTune
-min(lasso_mod$results$RMSE)
 ```
 
-The documentation of the caret `varImp' function says: for glmboost and glmnet the absolute value of the coefficients corresponding to the tuned model are used.
+Our best model is comprised of the attributes prop_type_simplified, review_scores_rating, bedrooms, accommodates, room_type,  cleaning_fee, instant_bookable, cancellation_policy, neighbourhood_cleansed, availability_365, availability_90, and  last_review. The highest R2 that we got with our training set was 0.4473. Now we will try to execute our best model on the test set and evaluate the RMSE.
 
-Although this means that a real ranking of the most important variables is not stored, it gives me the opportunity to find out how many of the variables are not used in the model (and hence have coefficient 0).
 
-```{r}
-lassoVarImp <- varImp(lasso_mod,scale=F)
-lassoImportance <- lassoVarImp$importance
+``` {r}
+# Filtering the testing set 
+learn_test  <- anti_join(final_listings, learn, by = 'id') %>% 
+  filter(price < quantile(airbnb_train$price, 0.9) & price > quantile(airbnb_train$price, 0.1)) %>% 
+  tidyr::drop_na()
 
-varsSelected <- length(which(lassoImportance$Overall!=0))
-varsNotSelected <- length(which(lassoImportance$Overall==0))
+# Making predictions on the testing set 
+predictions <- bestmodel %>% predict(learn_test)
 
-cat('Lasso uses', varsSelected, 'variables in its model, and did not select', varsNotSelected, 'variables.')
-```
+# Evaluating the root mean squared errors 
+rmse(predictions, learn_test$price_4_nights)
 
-So lasso did what it is supposed to do: it seems to have dealt with multicolinearity well by not using about 45% of the available variables in the model.
 
-```{r}
-LassoPred <- predict(lasso_mod, test1)
-predictions_lasso <- exp(LassoPred) #need to reverse the log to the real values
-head(predictions_lasso)
 ```
 
-## XGBoost model
+The RMSE comes out to be 390.9039
 
-Initially, I just worked with the XGBoost package directly. The main reason for this was that the package uses its own efficient datastructure (xgb.DMatrix). The package also provides a cross validation function. However, this CV function only determines the optimal number of rounds, and does not support a full grid search of hyperparameters.
+### HuxTable Summary
 
-Although caret does not seem to use the (fast) datastructure of the xgb package, I eventually decided to do hyperparameter tuning with it anyway, as it at least supports a full grid search. As far as I understand it, the main parameters to tune to avoid overfitting are max_depth, and min_child_weight (see [XGBoost documentation](http://xgboost.readthedocs.io/en/latest/how_to/param_tuning.html)). Below I am setting up a grid that tunes both these parameters, and also the eta (learning rate).
-
 ```{r}
-xgb_grid = expand.grid(
-nrounds = 1000,
-eta = c(0.1, 0.05, 0.01),
-max_depth = c(2, 3, 4, 5, 6),
-gamma = 0,
-colsample_bytree=1,
-min_child_weight=c(1, 2, 3, 4 ,5),
-subsample=1
-)
-```
-
-The next step is to let caret find the best hyperparameter values (using 5 fold cross validation).
+library(huxtable)
 
-```{r}
-#xgb_caret <- train(x=train1, y=all$SalePrice[!is.na(all$SalePrice)], method='xgbTree', trControl= my_control, tuneGrid=xgb_grid) 
-#xgb_caret$bestTune
+huxreg(list("Model 1" = model1, "Model 2" = model2, "Model 3" = model3, "Model 4" = model4, "Model 5" = model5, "Model 6" = model6, "Model 7" = bestmodel),
+                 statistics = c('#observations' = 'nobs', 
+                                'R squared' = 'r.squared', 
+                                'Adj. R Squared' = 'adj.r.squared', 
+                                'Residual SE' = 'sigma'), 
+                 bold_signif = 0.05, 
+                 stars = NULL
+) %>% 
+  set_caption('Comparison of models')
 ```
-
-As expected, this took quite a bit of time (locally). As I want to limit the running time on Kaggle, I disabled the code, and am just continuing with the results. According to caret, the 'bestTune' parameters are:
-
-* Max_depth=3
-* eta=0.05
-* Min_child_weight=4
 
-In the remainder of this section, I will continue to work with the xgboost package directly. Below, I am starting with the preparation of the data in the recommended format.
+### Predicting Private Rooms in Apartments 
 
-```{r}
-label_train <- all$SalePrice[!is.na(all$SalePrice)]
-
-# put our testing & training data into two seperates Dmatrixs objects
-dtrain <- xgb.DMatrix(data = as.matrix(train1), label= label_train)
-dtest <- xgb.DMatrix(data = as.matrix(test1))
-```
+Finally, we use the best model you came up with for evaluating prediction. Our goal is to find single room apartments with at least 10 reviews and an average rating of at least 90. We want to use our bestmodel to predict the total cost to stay at this airbnb for 4 nights. 
 
-In addition, I am taking over the best tuned values from the caret cross validation.
+``` {r}
 
-```{r}
-default_param<-list(
-        objective = "reg:linear",
-        booster = "gbtree",
-        eta=0.05, #default = 0.3
-        gamma=0,
-        max_depth=3, #default=6
-        min_child_weight=4, #default=1
-        subsample=1,
-        colsample_bytree=1
-)
-```
-
-The next step is to do cross validation to determine the best number of rounds (for the given set of parameters). 
+# We filter out all the listings that we are interested in from the testing set 
 
-```{r}
-xgbcv <- xgb.cv( params = default_param, data = dtrain, nrounds = 500, nfold = 5, showsd = T, stratified = T, print_every_n = 40, early_stopping_rounds = 10, maximize = F)
-```
+questioned_listings <- airbnb_test %>% 
+                        filter(room_type == "Private room" & prop_type_simplified == "Apartment" & number_of_reviews >= 10 & review_scores_rating >= 90)
 
-Although it was a bit of work, the hyperparameter tuning definitly paid of, as the cross validated RMSE inproved considerably (from 0.1225 without the caret tuning, to 0.1162 in this version)!
+# We add the id attribute through the row numbers 
+questioned_listings <- questioned_listings %>% 
+  mutate(id=row_number())
 
-```{r}
-#train the model using the best iteration found by cross validation
-xgb_mod <- xgb.train(data = dtrain, params=default_param, nrounds = 454)
+# Displaying the head of the questioned_listings
+head(questioned_listings)
 ```
+Now that we have our questioned_listings that we want to look at, the next step is to predict the prices using the predict function and make sure to include the upper and lower limits of the 95% confidence interval.
 
-```{r}
-XGBpred <- predict(xgb_mod, dtest)
-predictions_XGB <- exp(XGBpred) #need to reverse the log to the real values
-head(predictions_XGB)
-```
+``` {r}
+# Now it's time for us to evaluate the actual predictions 
+predicted_prices <- predict(bestmodel, newdata = questioned_listings, interval = "confidence") %>% 
+  exp()
 
-```{r, out.width="100%"}
-#view variable importance plot
-library(Ckmeans.1d.dp) #required for ggplot clustering
-mat <- xgb.importance (feature_names = colnames(train1),model = xgb_mod)
-xgb.ggplot.importance(importance_matrix = mat[1:20], rel_to_first = TRUE)
-```
+# Adding the row_number attribute to the predictd_prices table after converting it into a dataframe
+predicted_prices <- predicted_prices %>% 
+  data.frame() %>% 
+  mutate(id = row_number())
 
-## Averaging predictions
+# Inner joining the predited_prices and questioned_listings tables 
+results <- inner_join(questioned_listings, predicted_prices, by="id")
 
-Since the lasso and XGBoost algorithms are very different, averaging predictions likely improves the scores. As the lasso model does better regarding the cross validated RMSE score (0.1121 versus 0.1162), I am weigting the lasso model double.
+results_new <- results %>% 
+  summarize(lower_bound = mean(lwr),
+            upper_bound = mean(upr), 
+            predicted_price = mean(fit))
 
-```{r}
-sub_avg <- data.frame(Id = test_labels, SalePrice = (predictions_XGB+2*predictions_lasso)/3)
-head(sub_avg)
-write.csv(sub_avg, file = 'average.csv', row.names = F)
+head(results)
+results_new
 ```
-
-
-
-
 
+Voila! We have finally completed a linear regression model that makes predictions (stored in fit) that don't seem to far from the actual price_4_nights. The R^2 that we were able to achieve with our best model was only 0.45 on the training dataset but this could probably be used using a random forest classifier. We will explore better different models and try to evaluate how well we can do with different models soon! :) 
 
 
 
